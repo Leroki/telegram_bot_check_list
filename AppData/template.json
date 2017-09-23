@@ -1,27 +1,71 @@
 {
   "lists": [
     {
-      "name": "list1",
+      "name": "list1 a",
       "items": [
-        "check1",
-        "check2",
-        "check3"
+        {
+          "name": "check1 a",
+          "state": false
+        },
+        {
+          "name": "check2 a",
+          "state": false
+        },
+        {
+          "name": "check3 a",
+          "state": false
+        }
       ]
     },
     {
-      "name": "list2",
+      "name": "list2 b",
       "items": [
-        "check1",
-        "check2",
-        "check3"
+        {
+          "name": "check1 b",
+          "state": false
+        },
+        {
+          "name": "check2 b",
+          "state": false
+        },
+        {
+          "name": "check3 b",
+          "state": false
+        }
       ]
     },
     {
-      "name": "newList",
+      "name": "newList c",
       "items": [
-        "ch1",
-        "ch2",
-        "ch3"
+        {
+          "name": "ch1 c",
+          "state": false
+        },
+        {
+          "name": "ch2 c",
+          "state": false
+        },
+        {
+          "name": "ch3 c",
+          "state": false
+        }
+      ]
+    },
+    {
+      "name": "newList2",
+      "items": [
+        {
+          "name": "ch1",
+          "state": false
+        },
+        {
+          "name": "ch2",
+          "state": false
+        },
+        {
+          "name": "ch3",
+          "state": false
+        }
       ]
     }
   ]

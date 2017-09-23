@@ -7,15 +7,21 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strings"
+	"strconv"
 )
 
 type Config struct {
 	TelegramBotToken string
 }
 
+type Item struct {
+	Name  string `json:"name"`
+	State bool   `json:"state"`
+}
+
 type CheckList struct {
-	Name string		`json:"name"`
-	Items []string	`json:"items"`
+	Name  string `json:"name"`
+	Items []Item `json:"items"`
 }
 
 type CheckListTemplate struct {
@@ -39,7 +45,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	// bot.Debug = true
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -80,22 +86,25 @@ func main() {
 	}
 }
 
-func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI)  {
+func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	file, _ := os.Open("AppData/template.json")
 	defer file.Close()
 	decoder := json.NewDecoder(file)
-	clt := CheckListTemplate{}
-	err := decoder.Decode(&clt)
+	templ := CheckListTemplate{}
+	err := decoder.Decode(&templ)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	reply := ""
 
-	for i := range clt.CheckLists {
-		reply += clt.CheckLists[i].Name + ":\n"
-		for y := range clt.CheckLists[i].Items {
-			reply += clt.CheckLists[i].Items[y] + "\n"
+	for i := range templ.CheckLists {
+		reply += templ.CheckLists[i].Name + ":\n"
+		for y := range templ.CheckLists[i].Items {
+			reply += templ.CheckLists[i].Items[y].Name +
+				" : " +
+				strconv.FormatBool(templ.CheckLists[i].Items[y].State) +
+				"\n"
 		}
 		reply += "\n"
 	}
@@ -107,39 +116,52 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI)  {
 	bot.Send(msg)
 }
 
-func AddNewTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI)  {
-	filePath := "AppData/template.json"
-	rawDataIn, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal("Cannot load settings:", err)
-	}
-
-	var templ CheckListTemplate
-	err = json.Unmarshal(rawDataIn, &templ)
-	if err != nil {
-		log.Fatal("Invalid settings format:", err)
-	}
-
-	arguments := strings.Split(update.Message.CommandArguments(), " ")
-
-	newList := CheckList{
-		Name:  arguments[0],
-		Items: arguments[1:],
-	}
-
-	templ.CheckLists = append(templ.CheckLists, newList)
-
-	rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
-	if err != nil {
-		log.Fatal("JSON marshaling failed:", err)
-	}
-
-	err = ioutil.WriteFile(filePath, rawDataOut, 0)
-	if err != nil {
-		log.Fatal("Cannot write updated settings file:", err)
-	}
-
+func AddNewTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	reply := "Функция добавления новых шаблонов"
+	if update.Message.CommandArguments() == "" {
+		reply = "Нет аргументов"
+	} else {
+		filePath := "AppData/template.json"
+		rawDataIn, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			log.Fatal("Cannot load settings:", err)
+		}
+
+		var templ CheckListTemplate
+		err = json.Unmarshal(rawDataIn, &templ)
+		if err != nil {
+			log.Fatal("Invalid settings format:", err)
+		}
+
+		arguments := strings.Split(update.Message.CommandArguments(), " ")
+
+		var item []Item
+		for i := 1; i < len(arguments); i++ {
+			item = append(item, Item{
+				Name:  arguments[i],
+				State: false,
+			})
+
+		}
+
+		newList := CheckList{
+			Name:  arguments[0],
+			Items: item,
+		}
+
+		templ.CheckLists = append(templ.CheckLists, newList)
+
+		rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+		if err != nil {
+			log.Fatal("JSON marshaling failed:", err)
+		}
+
+		err = ioutil.WriteFile(filePath, rawDataOut, 0)
+		if err != nil {
+			log.Fatal("Cannot write updated settings file:", err)
+		}
+	}
+
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 	bot.Send(msg)
 }
