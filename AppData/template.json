@@ -1,0 +1,28 @@
+{
+  "lists": [
+    {
+      "name": "list1",
+      "items": [
+        "check1",
+        "check2",
+        "check3"
+      ]
+    },
+    {
+      "name": "list2",
+      "items": [
+        "check1",
+        "check2",
+        "check3"
+      ]
+    },
+    {
+      "name": "newList",
+      "items": [
+        "ch1",
+        "ch2",
+        "ch3"
+      ]
+    }
+  ]
+}
