@@ -86,6 +86,7 @@ func main() {
 		case "start":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Привет "+update.Message.From.UserName+"! Я телеграм бот.")
 			bot.Send(msg)
+			InitUser(update.Message.From.UserName)
 		case "stop":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пока "+update.Message.From.UserName+"!")
 			bot.Send(msg)
@@ -178,7 +179,7 @@ func main() {
 }*/
 
 func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
-	file, _ := os.Open("AppData/template.json")
+	file, _ := os.Open("AppData/" + update.Message.From.UserName + "tem.json")
 	defer file.Close()
 	decoder := json.NewDecoder(file)
 	templ := CheckListTemplate{}
@@ -202,6 +203,23 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	}
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 	bot.Send(msg)
+}
+
+func InitUser(UserName string) {
+	file1 := "AppData/" + UserName + ".json"
+	os.Create(file1)
+	file2 := "AppData/" + UserName + ".tem.json"
+	filePath := "AppData/template.json"
+
+	rawData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal("Cannot load settings:", err)
+	}
+
+	err = ioutil.WriteFile(file2, rawData, 0664)
+	if err != nil {
+		log.Fatal("Cannot write updated settings file:", err)
+	}
 }
 
 func AddNewTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
