@@ -41,6 +41,11 @@ type TransactData struct {
 	Command  string
 }
 
+type CallbackData struct {
+	ListName string `json:"listname"`
+	Command  string `json:"command"`
+}
+
 func main() {
 	os.Mkdir("./AppData", os.ModePerm)
 	file, _ := os.Open("config.json")
@@ -74,6 +79,20 @@ func main() {
 
 	// главный цикл
 	for update := range updates {
+		if update.CallbackQuery != nil {
+			query := update.CallbackQuery
+			var cbData CallbackData
+			err := json.Unmarshal([]byte(query.Data), &cbData)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+			log.Println(cbData)
+			switch cbData.Command {
+			case "show":
+				go ShowList(cbData.ListName, update, bot)
+			}
+		}
+
 		if update.Message == nil {
 			continue
 		}
@@ -211,6 +230,46 @@ func main() {
  *
  *     return append(u[:id], u[id + 1:]...)
  * } */
+func ShowList(listName string, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+	filePath := "AppData/" + update.CallbackQuery.From.UserName + ".tem.json"
+	rawDataIn, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal("Cannot load settings:", err)
+	}
+
+	var templ CheckListTemplate
+	err = json.Unmarshal(rawDataIn, &templ)
+	if err != nil {
+		log.Fatal("Invalid settings format:", err)
+	}
+	log.Println(templ)
+
+	// reply := ""
+	// for i := range templ.CheckLists {
+	// if templ.CheckLists[i].Name == listName {
+	// for j := range templ.CheckLists[i].Items {
+	// reply += templ.CheckLists[i].Items[j].Name + "\n"
+	// }
+	// }
+	// }
+
+	reply := ""
+	for i := range templ.CheckLists {
+		if templ.CheckLists[i].Name == listName {
+			for y := range templ.CheckLists[i].Items {
+				reply += templ.CheckLists[i].Items[y].Name + "\n"
+			}
+			break
+		}
+	}
+	keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Изменить"))
+	keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Удалить"))
+	keyRow3 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Назад"))
+	keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
+	msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), reply)
+	msg.ReplyMarkup = keyboard
+	bot.Send(msg)
+}
 
 func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	filePath := "AppData/" + update.Message.From.UserName + ".tem.json"
@@ -219,27 +278,33 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 		log.Fatal("Cannot load settings:", err)
 	}
 
-	var reply string
 	if len(rawDataIn) == 0 {
-		reply = "У вас нет шаблонов, вы можете их добавить"
+		reply := "У вас нет шаблонов, вы можете их добавить"
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+		bot.Send(msg)
 	} else {
 		var templ CheckListTemplate
 		err = json.Unmarshal(rawDataIn, &templ)
 		if err != nil {
 			log.Fatal("Invalid settings format:", err)
 		}
-		reply = ""
+		reply := "Ваши листы"
+		var keys [][]tgbotapi.InlineKeyboardButton
 		for i := range templ.CheckLists {
-			reply += templ.CheckLists[i].Name + ":\n"
-			for y := range templ.CheckLists[i].Items {
-				reply += templ.CheckLists[i].Items[y].Name + "\n"
+			name := templ.CheckLists[i].Name
+			var cbData CallbackData = CallbackData{
+				ListName: name,
+				Command:  "show",
 			}
-			reply += "\n"
+			outData, _ := json.Marshal(&cbData)
+			keys = append(keys, []tgbotapi.InlineKeyboardButton{})
+			keys[i] = append(keys[i], tgbotapi.NewInlineKeyboardButtonData(name, string(outData)))
 		}
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(keys...)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+		msg.ReplyMarkup = keyboard
+		bot.Send(msg)
 	}
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
-	bot.Send(msg)
 }
 
 func InitUser(UserName string) {
