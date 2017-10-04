@@ -31,8 +31,9 @@ type CheckListUser struct {
 }
 
 type User struct {
-	ID    int64
-	State string
+	ID         int64
+	State      string
+	PickedList string
 }
 
 type TransactData struct {
@@ -71,24 +72,30 @@ func main() {
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	var Users map[string]User
-	Users = make(map[string]User)
+	var Users map[string]User = make(map[string]User)
 
 	var TData chan TransactData = make(chan TransactData)
 	go DataBase(TData)
 
 	// главный цикл
 	for update := range updates {
+		// обработка callback'ов
 		if update.CallbackQuery != nil {
+			UserName := update.CallbackQuery.From.UserName
+			UserID := int64(update.CallbackQuery.From.ID)
 			query := update.CallbackQuery
 			var cbData CallbackData
 			err := json.Unmarshal([]byte(query.Data), &cbData)
 			if err != nil {
 				log.Fatal("Invalid settings format:", err)
 			}
-			log.Println(cbData)
 			switch cbData.Command {
-			case "show":
+			case "show templ":
+				Users[UserName] = User{
+					ID:         UserID,
+					State:      "Show templ",
+					PickedList: cbData.ListName,
+				}
 				go ShowList(cbData.ListName, update, bot)
 			}
 		}
@@ -97,10 +104,12 @@ func main() {
 			continue
 		}
 
-		if Users[update.Message.From.UserName].ID == 0 {
-			log.Println(Users[update.Message.From.UserName].ID)
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+		UserName := update.Message.From.UserName
+		UserID := int64(update.Message.From.ID)
+
+		if Users[UserName].ID == 0 {
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Main",
 			}
 		}
@@ -108,20 +117,19 @@ func main() {
 		// логируем от кого какое сообщение пришло
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		// debug info
-		log.Println(Users[update.Message.From.UserName].State)
 
 		// свитч на обработку комманд
 		// комманда - сообщение, начинающееся с "/"
 		switch update.Message.Command() {
 		case "start":
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
+			msg := tgbotapi.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
 			bot.Send(msg)
-			InitUser(update.Message.From.UserName)
+			InitUser(UserName)
 		case "stop":
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пока "+update.Message.From.UserName+"!")
+			msg := tgbotapi.NewMessage(UserID, "Пока "+update.Message.From.UserName+"!")
 			bot.Send(msg)
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Stopped",
 			}
 		}
@@ -129,37 +137,74 @@ func main() {
 		// обработка кнопок
 		switch update.Message.Text {
 		case "В главное меню":
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Main",
 			}
 		case "Шаблоны":
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Templates",
 			}
 		case "Показать мои шаблоны":
 			go ShowTemplates(update, bot)
 			continue
 		case "Добавить новый шаблон":
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Add tmp",
 			}
 		case "Отмена":
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Templates",
 			}
+		case "Назад":
+			if Users[UserName].State == "Show templ" {
+				Users[UserName] = User{
+					ID:    UserID,
+					State: "Templates",
+				}
+			}
 		case "Завершить":
-			if Users[update.Message.From.UserName].State == "Add tmp item" {
+			if Users[UserName].State == "Add tmp item" {
 				TData <- TransactData{
-					UserName: update.Message.From.UserName,
+					UserName: UserName,
 					Data:     "",
 					Command:  "save tmp data",
 				}
-				Users[update.Message.From.UserName] = User{
-					ID:    update.Message.Chat.ID,
+				Users[UserName] = User{
+					ID:    UserID,
+					State: "Templates",
+				}
+			} else if Users[UserName].State == "Edit tmp item" {
+				TData <- TransactData{
+					UserName: UserName,
+					Data:     Users[UserName].PickedList,
+					Command:  "edit templ",
+				}
+				Users[UserName] = User{
+					ID:    UserID,
+					State: "Templates",
+				}
+			}
+		case "Изменить":
+			if Users[UserName].State == "Show templ" {
+				Users[UserName] = User{
+					ID:         UserID,
+					State:      "Edit tmp",
+					PickedList: Users[UserName].PickedList,
+				}
+			}
+		case "Удалить":
+			if Users[UserName].State == "Show templ" {
+				TData <- TransactData{
+					UserName: UserName,
+					Data:     Users[UserName].PickedList,
+					Command:  "delete templ",
+				}
+				Users[UserName] = User{
+					ID:    UserID,
 					State: "Templates",
 				}
 			}
@@ -168,10 +213,10 @@ func main() {
 		// обработка положения в меню
 		switch Users[update.Message.From.UserName].State {
 		case "Main":
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Листы"))
+			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Листы (не работает)"))
 			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Шаблоны"))
 			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tgbotapi.NewMessage(Users[update.Message.From.UserName].ID, "Вы в главном меню")
+			msg := tgbotapi.NewMessage(Users[UserName].ID, "Вы в главном меню")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Templates":
@@ -179,36 +224,89 @@ func main() {
 			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Добавить новый шаблон"))
 			keyRow3 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
 			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
-			msg := tgbotapi.NewMessage(Users[update.Message.From.UserName].ID, "Вы в меню шаблонов")
+			msg := tgbotapi.NewMessage(Users[UserName].ID, "Вы в меню шаблонов")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
+		case "Add tmp name":
+			if len(update.Message.Text) > 26 {
+				Users[UserName] = User{
+					ID:    UserID,
+					State: "Add tmp name",
+				}
+				msg := tgbotapi.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
+				bot.Send(msg)
+			} else {
+				TData <- TransactData{
+					UserName: update.Message.From.UserName,
+					Data:     update.Message.Text,
+					Command:  "add name",
+				}
+				keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Завершить"))
+				keyboard := tgbotapi.NewReplyKeyboard(keyRow1)
+				msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+				Users[UserName] = User{
+					ID:    UserID,
+					State: "Add tmp item",
+				}
+			}
 		case "Add tmp":
 			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена"))
 			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
 			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tgbotapi.NewMessage(Users[update.Message.From.UserName].ID, "Введите название шаблона")
+			msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
+			Users[UserName] = User{
+				ID:    UserID,
 				State: "Add tmp name",
 			}
-		case "Add tmp name":
+		case "Add tmp item":
 			TData <- TransactData{
 				UserName: update.Message.From.UserName,
 				Data:     update.Message.Text,
-				Command:  "add name",
+				Command:  "add item",
 			}
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Завершить"))
-			keyboard := tgbotapi.NewReplyKeyboard(keyRow1)
-			msg := tgbotapi.NewMessage(Users[update.Message.From.UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
+		case "Edit tmp name":
+			if len(update.Message.Text) > 26 {
+				Users[UserName] = User{
+					ID:         UserID,
+					State:      "Edit tmp name",
+					PickedList: Users[UserName].PickedList,
+				}
+				msg := tgbotapi.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
+				bot.Send(msg)
+			} else {
+				TData <- TransactData{
+					UserName: UserName,
+					Data:     update.Message.Text,
+					Command:  "add name",
+				}
+				keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Завершить"))
+				keyboard := tgbotapi.NewReplyKeyboard(keyRow1)
+				msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+				Users[UserName] = User{
+					ID:         UserID,
+					State:      "Edit tmp item",
+					PickedList: Users[UserName].PickedList,
+				}
+			}
+		case "Edit tmp":
+			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена"))
+			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
+			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
+			msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[update.Message.From.UserName] = User{
-				ID:    update.Message.Chat.ID,
-				State: "Add tmp item",
+			Users[UserName] = User{
+				ID:         UserID,
+				State:      "Edit tmp name",
+				PickedList: Users[UserName].PickedList,
 			}
-		case "Add tmp item":
+		case "Edit tmp item":
 			TData <- TransactData{
 				UserName: update.Message.From.UserName,
 				Data:     update.Message.Text,
@@ -218,18 +316,18 @@ func main() {
 	}
 }
 
-/* func RemoveUser(u []User, name string) []User  {
- *     var id int
- *     id = -1
- *     for i := range u {
- *         if u[i].Name == name {
- *             id = i
- *             break
- *         }
- *     }
- *
- *     return append(u[:id], u[id + 1:]...)
- * } */
+func RemoveCheckList(u []CheckList, listName string) []CheckList {
+	var id int
+	id = -1
+	for i := range u {
+		if u[i].Name == listName {
+			id = i
+			break
+		}
+	}
+
+	return append(u[:id], u[id+1:]...)
+}
 func ShowList(listName string, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	filePath := "AppData/" + update.CallbackQuery.From.UserName + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
@@ -242,16 +340,6 @@ func ShowList(listName string, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	if err != nil {
 		log.Fatal("Invalid settings format:", err)
 	}
-	log.Println(templ)
-
-	// reply := ""
-	// for i := range templ.CheckLists {
-	// if templ.CheckLists[i].Name == listName {
-	// for j := range templ.CheckLists[i].Items {
-	// reply += templ.CheckLists[i].Items[j].Name + "\n"
-	// }
-	// }
-	// }
 
 	reply := ""
 	for i := range templ.CheckLists {
@@ -278,7 +366,7 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 		log.Fatal("Cannot load settings:", err)
 	}
 
-	if len(rawDataIn) == 0 {
+	if len(rawDataIn) == 0 || len(rawDataIn) == 17 {
 		reply := "У вас нет шаблонов, вы можете их добавить"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
 		bot.Send(msg)
@@ -294,7 +382,7 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 			name := templ.CheckLists[i].Name
 			var cbData CallbackData = CallbackData{
 				ListName: name,
-				Command:  "show",
+				Command:  "show templ",
 			}
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tgbotapi.InlineKeyboardButton{})
@@ -346,6 +434,35 @@ func DataBase(TData chan TransactData) {
 					Items: lItems,
 				}
 			}
+		case "edit templ":
+			filePath := "AppData/" + ldata.UserName + ".tem.json"
+			rawDataIn, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
+
+			var templ CheckListTemplate
+			err = json.Unmarshal(rawDataIn, &templ)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+			for i := range templ.CheckLists {
+				if templ.CheckLists[i].Name == ldata.Data {
+					templ.CheckLists[i] = CL[ldata.UserName]
+					break
+				}
+			}
+
+			rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+			if err != nil {
+				log.Fatal("JSON marshaling failed:", err)
+			}
+
+			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			if err != nil {
+				log.Fatal("Cannot write updated settings file:", err)
+			}
+			delete(CL, ldata.UserName)
 		case "save tmp data":
 			filePath := "AppData/" + ldata.UserName + ".tem.json"
 			rawDataIn, err := ioutil.ReadFile(filePath)
@@ -374,6 +491,28 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot write updated settings file:", err)
 			}
 			delete(CL, ldata.UserName)
+		case "delete templ":
+			filePath := "AppData/" + ldata.UserName + ".tem.json"
+			rawDataIn, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
+
+			var templ CheckListTemplate
+			err = json.Unmarshal(rawDataIn, &templ)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+			templ.CheckLists = RemoveCheckList(templ.CheckLists, ldata.Data)
+			rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+			if err != nil {
+				log.Fatal("JSON marshaling failed:", err)
+			}
+
+			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			if err != nil {
+				log.Fatal("Cannot write updated settings file:", err)
+			}
 		}
 	}
 }

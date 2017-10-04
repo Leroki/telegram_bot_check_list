@@ -1,38 +1,3 @@
 {
-  "lists": [
-    {
-      "name": "heh",
-      "items": [
-        {
-          "name": "1",
-          "state": false
-        },
-        {
-          "name": "2",
-          "state": false
-        },
-        {
-          "name": "3",
-          "state": false
-        }
-      ]
-    },
-    {
-      "name": "heh2",
-      "items": [
-        {
-          "name": "3",
-          "state": false
-        },
-        {
-          "name": "2",
-          "state": false
-        },
-        {
-          "name": "1",
-          "state": false
-        }
-      ]
-    }
-  ]
+  "lists": []
 }
