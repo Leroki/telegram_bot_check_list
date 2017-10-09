@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"gopkg.in/telegram-bot-api.v4"
+	tg "gopkg.in/telegram-bot-api.v4"
 	"io/ioutil"
 	"log"
 	"os"
@@ -58,7 +58,7 @@ func main() {
 	}
 	file.Close()
 
-	bot, err := tgbotapi.NewBotAPI(configuration.TelegramBotToken)
+	bot, err := tg.NewBotAPI(configuration.TelegramBotToken)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -67,7 +67,7 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	u := tgbotapi.NewUpdate(0)
+	u := tg.NewUpdate(0)
 	u.Timeout = 60
 
 	updates, err := bot.GetUpdatesChan(u)
@@ -122,16 +122,13 @@ func main() {
 		// комманда - сообщение, начинающееся с "/"
 		switch update.Message.Command() {
 		case "start":
-			msg := tgbotapi.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
+			msg := tg.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
 			bot.Send(msg)
 			InitUser(UserName)
 		case "stop":
-			msg := tgbotapi.NewMessage(UserID, "Пока "+update.Message.From.UserName+"!")
+			msg := tg.NewMessage(UserID, "Пока "+update.Message.From.FirstName+"!")
 			bot.Send(msg)
-			Users[UserName] = User{
-				ID:    UserID,
-				State: "Stopped",
-			}
+			delete(Users, UserName)
 		}
 
 		// обработка кнопок
@@ -140,6 +137,11 @@ func main() {
 			Users[UserName] = User{
 				ID:    UserID,
 				State: "Main",
+			}
+		case "Листы":
+			Users[UserName] = User{
+				ID:    UserID,
+				State: "Lists",
 			}
 		case "Шаблоны":
 			Users[UserName] = User{
@@ -213,18 +215,26 @@ func main() {
 		// обработка положения в меню
 		switch Users[update.Message.From.UserName].State {
 		case "Main":
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Листы (не работает)"))
-			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Шаблоны"))
-			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tgbotapi.NewMessage(Users[UserName].ID, "Вы в главном меню")
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Листы"))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Шаблоны"))
+			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
+			msg := tg.NewMessage(Users[UserName].ID, "Вы в главном меню")
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+		case "Lists":
+			ShowCheckList(update, bot)
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый лист из шаблона"))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
+			msg := tg.NewMessage(Users[UserName].ID, "")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Templates":
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Показать мои шаблоны"))
-			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Добавить новый шаблон"))
-			keyRow3 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
-			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
-			msg := tgbotapi.NewMessage(Users[UserName].ID, "Вы в меню шаблонов")
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Показать мои шаблоны"))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый шаблон"))
+			keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
+			msg := tg.NewMessage(Users[UserName].ID, "Вы в меню шаблонов")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Add tmp name":
@@ -233,7 +243,7 @@ func main() {
 					ID:    UserID,
 					State: "Add tmp name",
 				}
-				msg := tgbotapi.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
+				msg := tg.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
 				bot.Send(msg)
 			} else {
 				TData <- TransactData{
@@ -241,9 +251,9 @@ func main() {
 					Data:     update.Message.Text,
 					Command:  "add name",
 				}
-				keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Завершить"))
-				keyboard := tgbotapi.NewReplyKeyboard(keyRow1)
-				msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
+				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+				keyboard := tg.NewReplyKeyboard(keyRow1)
+				msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				Users[UserName] = User{
@@ -252,10 +262,10 @@ func main() {
 				}
 			}
 		case "Add tmp":
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена"))
-			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
-			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
@@ -275,7 +285,7 @@ func main() {
 					State:      "Edit tmp name",
 					PickedList: Users[UserName].PickedList,
 				}
-				msg := tgbotapi.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
+				msg := tg.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
 				bot.Send(msg)
 			} else {
 				TData <- TransactData{
@@ -283,9 +293,9 @@ func main() {
 					Data:     update.Message.Text,
 					Command:  "add name",
 				}
-				keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Завершить"))
-				keyboard := tgbotapi.NewReplyKeyboard(keyRow1)
-				msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
+				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+				keyboard := tg.NewReplyKeyboard(keyRow1)
+				msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				Users[UserName] = User{
@@ -295,10 +305,10 @@ func main() {
 				}
 			}
 		case "Edit tmp":
-			keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена"))
-			keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("В главное меню"))
-			keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tgbotapi.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
@@ -328,7 +338,8 @@ func RemoveCheckList(u []CheckList, listName string) []CheckList {
 
 	return append(u[:id], u[id+1:]...)
 }
-func ShowList(listName string, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+
+func ShowList(listName string, update tg.Update, bot *tg.BotAPI) {
 	filePath := "AppData/" + update.CallbackQuery.From.UserName + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -350,25 +361,71 @@ func ShowList(listName string, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 			break
 		}
 	}
-	keyRow1 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Изменить"))
-	keyRow2 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Удалить"))
-	keyRow3 := tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Назад"))
-	keyboard := tgbotapi.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
-	msg := tgbotapi.NewMessage(int64(update.CallbackQuery.From.ID), reply)
+	if reply == "" {
+		reply = "Этот шаблон пуст"
+	}
+	keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Изменить"))
+	keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Удалить"))
+	keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Назад"))
+	keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
+	msg := tg.NewMessage(int64(update.CallbackQuery.From.ID), reply)
 	msg.ReplyMarkup = keyboard
 	bot.Send(msg)
 }
 
-func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+func ShowCheckList(update tg.Update, bot *tg.BotAPI) {
+	filePath := "AppData/" + update.Message.From.UserName + ".json"
+	rawDataIn, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal("Cannot load settings:", err)
+	}
+
+	var templ CheckListUser
+	err = json.Unmarshal(rawDataIn, &templ)
+	if err != nil {
+		log.Fatal("Invalid settings format:", err)
+	}
+	reply := "Ваши листы"
+	var keys [][]tg.InlineKeyboardButton
+	var count int = 0
+	for i := range templ.CheckLists {
+		lName := templ.CheckLists[i].Name
+		var cbData CallbackData = CallbackData{
+			ListName: lName,
+			Command:  "show templ",
+		}
+		outData, _ := json.Marshal(&cbData)
+		keys = append(keys, []tg.InlineKeyboardButton{})
+		keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(lName+" ⏬", string(outData)))
+		count++
+		for j := range templ.CheckLists[i].Items {
+			iName := templ.CheckLists[i].Items[j].Name
+			var cbData CallbackData = CallbackData{
+				ListName: iName,
+				Command:  "show templ",
+			}
+			outData, _ := json.Marshal(&cbData)
+			keys = append(keys, []tg.InlineKeyboardButton{})
+			keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName, string(outData)))
+			count++
+		}
+	}
+	keyboard := tg.NewInlineKeyboardMarkup(keys...)
+	msg := tg.NewMessage(update.Message.Chat.ID, reply)
+	msg.ReplyMarkup = keyboard
+	bot.Send(msg)
+}
+
+func ShowTemplates(update tg.Update, bot *tg.BotAPI) {
 	filePath := "AppData/" + update.Message.From.UserName + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("Cannot load settings:", err)
 	}
 
-	if len(rawDataIn) == 0 || len(rawDataIn) == 17 {
+	if len(rawDataIn) == 17 || len(rawDataIn) == 19 {
 		reply := "У вас нет шаблонов, вы можете их добавить"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+		msg := tg.NewMessage(update.Message.Chat.ID, reply)
 		bot.Send(msg)
 	} else {
 		var templ CheckListTemplate
@@ -377,7 +434,7 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 			log.Fatal("Invalid settings format:", err)
 		}
 		reply := "Ваши листы"
-		var keys [][]tgbotapi.InlineKeyboardButton
+		var keys [][]tg.InlineKeyboardButton
 		for i := range templ.CheckLists {
 			name := templ.CheckLists[i].Name
 			var cbData CallbackData = CallbackData{
@@ -385,21 +442,48 @@ func ShowTemplates(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 				Command:  "show templ",
 			}
 			outData, _ := json.Marshal(&cbData)
-			keys = append(keys, []tgbotapi.InlineKeyboardButton{})
-			keys[i] = append(keys[i], tgbotapi.NewInlineKeyboardButtonData(name, string(outData)))
+			keys = append(keys, []tg.InlineKeyboardButton{})
+			keys[i] = append(keys[i], tg.NewInlineKeyboardButtonData(name, string(outData)))
 		}
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(keys...)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+		keyboard := tg.NewInlineKeyboardMarkup(keys...)
+		msg := tg.NewMessage(update.Message.Chat.ID, reply)
 		msg.ReplyMarkup = keyboard
 		bot.Send(msg)
 	}
 }
 
 func InitUser(UserName string) {
+	// user lists
 	file1 := "AppData/" + UserName + ".json"
 	os.Create(file1)
+
+	clu := CheckListUser{}
+	var rawDataOut []byte
+	var err error
+	rawDataOut, err = json.MarshalIndent(&clu, "", "  ")
+	if err != nil {
+		log.Fatal("JSON marshaling failed:", err)
+	}
+
+	err = ioutil.WriteFile(file1, rawDataOut, 0664)
+	if err != nil {
+		log.Fatal("Cannot write updated settings file:", err)
+	}
+
+	// user templates
 	file2 := "AppData/" + UserName + ".tem.json"
 	os.Create(file2)
+
+	clt := CheckListTemplate{}
+	rawDataOut, err = json.MarshalIndent(&clt, "", "  ")
+	if err != nil {
+		log.Fatal("JSON marshaling failed:", err)
+	}
+
+	err = ioutil.WriteFile(file2, rawDataOut, 0664)
+	if err != nil {
+		log.Fatal("Cannot write updated settings file:", err)
+	}
 }
 
 func DataBase(TData chan TransactData) {
@@ -517,7 +601,7 @@ func DataBase(TData chan TransactData) {
 	}
 }
 
-/* func AddNewTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+/* func AddNewTemplate(update tg.Update, bot *tg.BotAPI) {
  *     reply := "Функция добавления новых шаблонов"
  *     if update.Message.CommandArguments() == "" {
  *         reply = "Нет аргументов"
@@ -563,6 +647,6 @@ func DataBase(TData chan TransactData) {
  *         }
  *     }
  *
- *     msg := tgbotapi.NewMessage(update.Message.Chat.ID, reply)
+ *     msg := tg.NewMessage(update.Message.Chat.ID, reply)
  *     bot.Send(msg)
  * } */

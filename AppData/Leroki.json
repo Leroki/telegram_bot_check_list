@@ -1,0 +1,25 @@
+{
+  "lists": [
+    {
+      "name": "hhh",
+      "items": [
+        {
+          "name": "1",
+          "state": false
+        },
+        {
+          "name": "2",
+          "state": false
+        },
+        {
+          "name": "3",
+          "state": false
+        },
+        {
+          "name": "4",
+          "state": false
+        }
+      ]
+    }
+  ]
+}
