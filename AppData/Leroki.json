@@ -1,22 +1,22 @@
 {
   "lists": [
     {
-      "name": "hhh",
+      "name": "Шаблон1",
       "items": [
         {
-          "name": "1",
+          "name": "1итем",
           "state": false
         },
         {
-          "name": "2",
+          "name": "2итем",
           "state": false
         },
         {
-          "name": "3",
+          "name": "3итем",
           "state": false
         },
         {
-          "name": "4",
+          "name": "4итем",
           "state": false
         }
       ]

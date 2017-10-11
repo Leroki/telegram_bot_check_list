@@ -22,15 +22,12 @@ type CheckList struct {
 	Items []Item `json:"items"`
 }
 
-type CheckListTemplate struct {
-	CheckLists []CheckList `json:"lists"`
-}
-
-type CheckListUser struct {
+type CheckListJson struct {
 	CheckLists []CheckList `json:"lists"`
 }
 
 type User struct {
+	Name       string
 	ID         int64
 	State      string
 	PickedList string
@@ -92,11 +89,25 @@ func main() {
 			switch cbData.Command {
 			case "show templ":
 				Users[UserName] = User{
+					Name:       UserName,
 					ID:         UserID,
 					State:      "Show templ",
 					PickedList: cbData.ListName,
 				}
-				go ShowList(cbData.ListName, update, bot)
+				go ShowList(cbData.ListName, Users[UserName], bot)
+			case "add to list":
+				TData <- TransactData{
+					Data:     cbData.ListName,
+					UserName: UserName,
+					Command:  "add from templ",
+				}
+				Users[UserName] = User{
+					Name:  UserName,
+					ID:    UserID,
+					State: "Lists",
+				}
+				ShowCheckList(Users[UserName], bot)
+
 			}
 		}
 
@@ -109,6 +120,7 @@ func main() {
 
 		if Users[UserName].ID == 0 {
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Main",
 			}
@@ -135,35 +147,41 @@ func main() {
 		switch update.Message.Text {
 		case "В главное меню":
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Main",
 			}
 		case "Листы":
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Lists",
 			}
 		case "Шаблоны":
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Templates",
 			}
 		case "Показать мои шаблоны":
-			go ShowTemplates(update, bot)
+			go ShowTemplates(Users[UserName], bot, "show")
 			continue
 		case "Добавить новый шаблон":
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Add tmp",
 			}
 		case "Отмена":
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Templates",
 			}
 		case "Назад":
 			if Users[UserName].State == "Show templ" {
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Templates",
 				}
@@ -176,6 +194,7 @@ func main() {
 					Command:  "save tmp data",
 				}
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Templates",
 				}
@@ -186,6 +205,7 @@ func main() {
 					Command:  "edit templ",
 				}
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Templates",
 				}
@@ -193,6 +213,7 @@ func main() {
 		case "Изменить":
 			if Users[UserName].State == "Show templ" {
 				Users[UserName] = User{
+					Name:       UserName,
 					ID:         UserID,
 					State:      "Edit tmp",
 					PickedList: Users[UserName].PickedList,
@@ -206,9 +227,17 @@ func main() {
 					Command:  "delete templ",
 				}
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Templates",
 				}
+			}
+		case "Добавить новый лист из шаблона":
+			ShowTemplates(Users[UserName], bot, "add")
+			Users[UserName] = User{
+				Name:  UserName,
+				ID:    UserID,
+				State: "Add from template",
 			}
 		}
 
@@ -222,11 +251,11 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Lists":
-			ShowCheckList(update, bot)
+			ShowCheckList(Users[UserName], bot)
 			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый лист из шаблона"))
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tg.NewMessage(Users[UserName].ID, "")
+			msg := tg.NewMessage(Users[UserName].ID, "Что сделать?")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Templates":
@@ -240,6 +269,7 @@ func main() {
 		case "Add tmp name":
 			if len(update.Message.Text) > 26 {
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Add tmp name",
 				}
@@ -257,6 +287,7 @@ func main() {
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				Users[UserName] = User{
+					Name:  UserName,
 					ID:    UserID,
 					State: "Add tmp item",
 				}
@@ -269,6 +300,7 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
+				Name:  UserName,
 				ID:    UserID,
 				State: "Add tmp name",
 			}
@@ -281,6 +313,7 @@ func main() {
 		case "Edit tmp name":
 			if len(update.Message.Text) > 26 {
 				Users[UserName] = User{
+					Name:       UserName,
 					ID:         UserID,
 					State:      "Edit tmp name",
 					PickedList: Users[UserName].PickedList,
@@ -299,6 +332,7 @@ func main() {
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 				Users[UserName] = User{
+					Name:       UserName,
 					ID:         UserID,
 					State:      "Edit tmp item",
 					PickedList: Users[UserName].PickedList,
@@ -312,13 +346,14 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
+				Name:       UserName,
 				ID:         UserID,
 				State:      "Edit tmp name",
 				PickedList: Users[UserName].PickedList,
 			}
 		case "Edit tmp item":
 			TData <- TransactData{
-				UserName: update.Message.From.UserName,
+				UserName: UserName,
 				Data:     update.Message.Text,
 				Command:  "add item",
 			}
@@ -339,14 +374,14 @@ func RemoveCheckList(u []CheckList, listName string) []CheckList {
 	return append(u[:id], u[id+1:]...)
 }
 
-func ShowList(listName string, update tg.Update, bot *tg.BotAPI) {
-	filePath := "AppData/" + update.CallbackQuery.From.UserName + ".tem.json"
+func ShowList(listName string, user User, bot *tg.BotAPI) {
+	filePath := "AppData/" + user.Name + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("Cannot load settings:", err)
 	}
 
-	var templ CheckListTemplate
+	var templ CheckListJson
 	err = json.Unmarshal(rawDataIn, &templ)
 	if err != nil {
 		log.Fatal("Invalid settings format:", err)
@@ -368,19 +403,19 @@ func ShowList(listName string, update tg.Update, bot *tg.BotAPI) {
 	keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Удалить"))
 	keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Назад"))
 	keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
-	msg := tg.NewMessage(int64(update.CallbackQuery.From.ID), reply)
+	msg := tg.NewMessage(user.ID, reply)
 	msg.ReplyMarkup = keyboard
 	bot.Send(msg)
 }
 
-func ShowCheckList(update tg.Update, bot *tg.BotAPI) {
-	filePath := "AppData/" + update.Message.From.UserName + ".json"
+func ShowCheckList(user User, bot *tg.BotAPI) {
+	filePath := "AppData/" + user.Name + ".json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("Cannot load settings:", err)
 	}
 
-	var templ CheckListUser
+	var templ CheckListJson
 	err = json.Unmarshal(rawDataIn, &templ)
 	if err != nil {
 		log.Fatal("Invalid settings format:", err)
@@ -392,7 +427,7 @@ func ShowCheckList(update tg.Update, bot *tg.BotAPI) {
 		lName := templ.CheckLists[i].Name
 		var cbData CallbackData = CallbackData{
 			ListName: lName,
-			Command:  "show templ",
+			Command:  "check list",
 		}
 		outData, _ := json.Marshal(&cbData)
 		keys = append(keys, []tg.InlineKeyboardButton{})
@@ -402,7 +437,7 @@ func ShowCheckList(update tg.Update, bot *tg.BotAPI) {
 			iName := templ.CheckLists[i].Items[j].Name
 			var cbData CallbackData = CallbackData{
 				ListName: iName,
-				Command:  "show templ",
+				Command:  "check item",
 			}
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
@@ -411,13 +446,13 @@ func ShowCheckList(update tg.Update, bot *tg.BotAPI) {
 		}
 	}
 	keyboard := tg.NewInlineKeyboardMarkup(keys...)
-	msg := tg.NewMessage(update.Message.Chat.ID, reply)
+	msg := tg.NewMessage(user.ID, reply)
 	msg.ReplyMarkup = keyboard
 	bot.Send(msg)
 }
 
-func ShowTemplates(update tg.Update, bot *tg.BotAPI) {
-	filePath := "AppData/" + update.Message.From.UserName + ".tem.json"
+func ShowTemplates(user User, bot *tg.BotAPI, command string) {
+	filePath := "AppData/" + user.Name + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("Cannot load settings:", err)
@@ -425,28 +460,36 @@ func ShowTemplates(update tg.Update, bot *tg.BotAPI) {
 
 	if len(rawDataIn) == 17 || len(rawDataIn) == 19 {
 		reply := "У вас нет шаблонов, вы можете их добавить"
-		msg := tg.NewMessage(update.Message.Chat.ID, reply)
+		msg := tg.NewMessage(user.ID, reply)
 		bot.Send(msg)
 	} else {
-		var templ CheckListTemplate
+		var templ CheckListJson
 		err = json.Unmarshal(rawDataIn, &templ)
 		if err != nil {
 			log.Fatal("Invalid settings format:", err)
 		}
-		reply := "Ваши листы"
+		reply := "Ваши шаблоны"
 		var keys [][]tg.InlineKeyboardButton
 		for i := range templ.CheckLists {
 			name := templ.CheckLists[i].Name
-			var cbData CallbackData = CallbackData{
-				ListName: name,
-				Command:  "show templ",
+			var cbData CallbackData
+			if command == "show" {
+				cbData = CallbackData{
+					ListName: name,
+					Command:  "show templ",
+				}
+			} else if command == "add" {
+				cbData = CallbackData{
+					ListName: name,
+					Command:  "add to list",
+				}
 			}
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
 			keys[i] = append(keys[i], tg.NewInlineKeyboardButtonData(name, string(outData)))
 		}
 		keyboard := tg.NewInlineKeyboardMarkup(keys...)
-		msg := tg.NewMessage(update.Message.Chat.ID, reply)
+		msg := tg.NewMessage(user.ID, reply)
 		msg.ReplyMarkup = keyboard
 		bot.Send(msg)
 	}
@@ -457,7 +500,7 @@ func InitUser(UserName string) {
 	file1 := "AppData/" + UserName + ".json"
 	os.Create(file1)
 
-	clu := CheckListUser{}
+	clu := CheckListJson{}
 	var rawDataOut []byte
 	var err error
 	rawDataOut, err = json.MarshalIndent(&clu, "", "  ")
@@ -474,7 +517,7 @@ func InitUser(UserName string) {
 	file2 := "AppData/" + UserName + ".tem.json"
 	os.Create(file2)
 
-	clt := CheckListTemplate{}
+	clt := CheckListJson{}
 	rawDataOut, err = json.MarshalIndent(&clt, "", "  ")
 	if err != nil {
 		log.Fatal("JSON marshaling failed:", err)
@@ -495,6 +538,7 @@ func DataBase(TData chan TransactData) {
 			CL[ldata.UserName] = CheckList{
 				Name: ldata.Data,
 			}
+
 		case "add item":
 			if len(CL[ldata.UserName].Items) == 0 {
 				CL[ldata.UserName] = CheckList{
@@ -518,6 +562,7 @@ func DataBase(TData chan TransactData) {
 					Items: lItems,
 				}
 			}
+
 		case "edit templ":
 			filePath := "AppData/" + ldata.UserName + ".tem.json"
 			rawDataIn, err := ioutil.ReadFile(filePath)
@@ -525,7 +570,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot load settings:", err)
 			}
 
-			var templ CheckListTemplate
+			var templ CheckListJson
 			err = json.Unmarshal(rawDataIn, &templ)
 			if err != nil {
 				log.Fatal("Invalid settings format:", err)
@@ -547,6 +592,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot write updated settings file:", err)
 			}
 			delete(CL, ldata.UserName)
+
 		case "save tmp data":
 			filePath := "AppData/" + ldata.UserName + ".tem.json"
 			rawDataIn, err := ioutil.ReadFile(filePath)
@@ -554,7 +600,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot load settings:", err)
 			}
 
-			var templ CheckListTemplate
+			var templ CheckListJson
 			if len(rawDataIn) == 0 {
 				templ.CheckLists = append(templ.CheckLists, CL[ldata.UserName])
 			} else {
@@ -575,6 +621,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot write updated settings file:", err)
 			}
 			delete(CL, ldata.UserName)
+
 		case "delete templ":
 			filePath := "AppData/" + ldata.UserName + ".tem.json"
 			rawDataIn, err := ioutil.ReadFile(filePath)
@@ -582,7 +629,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Cannot load settings:", err)
 			}
 
-			var templ CheckListTemplate
+			var templ CheckListJson
 			err = json.Unmarshal(rawDataIn, &templ)
 			if err != nil {
 				log.Fatal("Invalid settings format:", err)
@@ -597,56 +644,48 @@ func DataBase(TData chan TransactData) {
 			if err != nil {
 				log.Fatal("Cannot write updated settings file:", err)
 			}
+
+		case "add from templ":
+			file1 := "AppData/" + ldata.UserName + ".tem.json"
+			file2 := "Appdata/" + ldata.UserName + ".json"
+
+			rawDataIn1, err := ioutil.ReadFile(file1)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
+			rawDataIn2, err := ioutil.ReadFile(file2)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
+
+			var cl1 CheckListJson
+			err = json.Unmarshal(rawDataIn1, &cl1)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+			var cl2 CheckListJson
+			err = json.Unmarshal(rawDataIn2, &cl2)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+
+			var cl3 CheckList
+			for i := range cl1.CheckLists {
+				if cl1.CheckLists[i].Name == ldata.Data {
+					cl3 = cl1.CheckLists[i]
+				}
+			}
+			cl2.CheckLists = append(cl2.CheckLists, cl3)
+			rawDataOut, err := json.MarshalIndent(&cl2, "", "  ")
+			if err != nil {
+				log.Fatal("JSON marshaling failed:", err)
+			}
+
+			err = ioutil.WriteFile(file2, rawDataOut, 0664)
+			if err != nil {
+				log.Fatal("Cannot write updated settings file:", err)
+			}
+
 		}
 	}
 }
-
-/* func AddNewTemplate(update tg.Update, bot *tg.BotAPI) {
- *     reply := "Функция добавления новых шаблонов"
- *     if update.Message.CommandArguments() == "" {
- *         reply = "Нет аргументов"
- *     } else {
- *         filePath := "AppData/template.json"
- *         rawDataIn, err := ioutil.ReadFile(filePath)
- *         if err != nil {
- *             log.Fatal("Cannot load settings:", err)
- *         }
- *
- *         var templ CheckListTemplate
- *         err = json.Unmarshal(rawDataIn, &templ)
- *         if err != nil {
- *             log.Fatal("Invalid settings format:", err)
- *         }
- *
- *         arguments := strings.Split(update.Message.CommandArguments(), " ")
- *
- *         var item []Item
- *         for i := 1; i < len(arguments); i++ {
- *             item = append(item, Item{
- *                 Name:  arguments[i],
- *                 State: false,
- *             })
- *
- *         }
- *
- *         newList := CheckList{
- *             Name:  arguments[0],
- *             Items: item,
- *         }
- *
- *         templ.CheckLists = append(templ.CheckLists, newList)
- *
- *         rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
- *         if err != nil {
- *             log.Fatal("JSON marshaling failed:", err)
- *         }
- *
- *         err = ioutil.WriteFile(filePath, rawDataOut, 0)
- *         if err != nil {
- *             log.Fatal("Cannot write updated settings file:", err)
- *         }
- *     }
- *
- *     msg := tg.NewMessage(update.Message.Chat.ID, reply)
- *     bot.Send(msg)
- * } */
