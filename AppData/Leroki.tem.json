@@ -1,35 +1,18 @@
 {
   "lists": [
     {
-      "name": "Мой шаблон 1",
+      "name": "Hello",
       "items": [
         {
-          "name": "Помыть поссуду",
+          "name": "1",
           "state": false
         },
         {
-          "name": "пропылесосить",
+          "name": "2",
           "state": false
         },
         {
-          "name": "что-то еще",
-          "state": false
-        }
-      ]
-    },
-    {
-      "name": "Мой шаблон 2",
-      "items": [
-        {
-          "name": "Сходить в техан",
-          "state": false
-        },
-        {
-          "name": "Придти домой",
-          "state": false
-        },
-        {
-          "name": "что нибудь интересное сделать",
+          "name": "3",
           "state": false
         }
       ]
