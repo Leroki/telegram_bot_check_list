@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/rs/xid"
 	tg "gopkg.in/telegram-bot-api.v4"
 	"io/ioutil"
 	"log"
@@ -14,11 +15,13 @@ type Config struct {
 
 type Item struct {
 	Name  string `json:"name"`
+	ID    string `json:"id"`
 	State bool   `json:"state"`
 }
 
 type CheckList struct {
 	Name  string `json:"name"`
+	ID    string `json:"id"`
 	Items []Item `json:"items"`
 }
 
@@ -27,10 +30,10 @@ type CheckListJson struct {
 }
 
 type User struct {
-	Name       string
-	ID         int64
-	State      string
-	PickedList string
+	Name  string
+	ID    int64
+	State string
+	Data  string
 }
 
 type TransactData struct {
@@ -40,13 +43,13 @@ type TransactData struct {
 }
 
 type CallbackData struct {
-	ListName string `json:"listname"`
-	Command  string `json:"command"`
+	ListID  string `json:"list_id"`
+	Command string `json:"command"`
 }
 
 func main() {
-	os.Mkdir("./AppData", os.ModePerm)
-	file, _ := os.Open("config.json")
+	os.Mkdir("AppData", os.ModePerm)
+	file, _ := os.Open("configs/config.json")
 	decoder := json.NewDecoder(file)
 	configuration := Config{}
 	err := decoder.Decode(&configuration)
@@ -89,15 +92,15 @@ func main() {
 			switch cbData.Command {
 			case "show templ":
 				Users[UserName] = User{
-					Name:       UserName,
-					ID:         UserID,
-					State:      "Show templ",
-					PickedList: cbData.ListName,
+					Name:  UserName,
+					ID:    UserID,
+					State: "Show templ",
+					Data:  cbData.ListID,
 				}
-				go ShowList(cbData.ListName, Users[UserName], bot)
+				go ShowList(cbData.ListID, Users[UserName], bot)
 			case "add to list":
 				TData <- TransactData{
-					Data:     cbData.ListName,
+					Data:     cbData.ListID,
 					UserName: UserName,
 					Command:  "add from templ",
 				}
@@ -106,8 +109,37 @@ func main() {
 					ID:    UserID,
 					State: "Lists",
 				}
+				<-TData
 				ShowCheckList(Users[UserName], bot)
 
+			case "check list":
+				Users[UserName] = User{
+					Name:  UserName,
+					Data:  cbData.ListID,
+					ID:    UserID,
+					State: "Delete from list",
+				}
+				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Удалить"))
+				keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Назад"))
+				keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
+				msg := tg.NewMessage(Users[UserName].ID, "Вы в главном меню")
+				msg.ReplyMarkup = keyboard
+				bot.Send(msg)
+
+			case "check item":
+				TData <- TransactData{
+					Data:     cbData.ListID,
+					UserName: UserName,
+					Command:  "check item",
+				}
+				Users[UserName] = User{
+					Name:  UserName,
+					ID:    UserID,
+					Data:  cbData.ListID,
+					State: "Lists",
+				}
+				<-TData
+				ShowCheckList(Users[UserName], bot)
 			}
 		}
 
@@ -157,6 +189,7 @@ func main() {
 				ID:    UserID,
 				State: "Lists",
 			}
+			ShowCheckList(Users[UserName], bot)
 		case "Шаблоны":
 			Users[UserName] = User{
 				Name:  UserName,
@@ -185,6 +218,12 @@ func main() {
 					ID:    UserID,
 					State: "Templates",
 				}
+			} else if Users[UserName].State == "Delete from list" {
+				Users[UserName] = User{
+					Name:  UserName,
+					ID:    UserID,
+					State: "Lists",
+				}
 			}
 		case "Завершить":
 			if Users[UserName].State == "Add tmp item" {
@@ -201,7 +240,7 @@ func main() {
 			} else if Users[UserName].State == "Edit tmp item" {
 				TData <- TransactData{
 					UserName: UserName,
-					Data:     Users[UserName].PickedList,
+					Data:     Users[UserName].Data,
 					Command:  "edit templ",
 				}
 				Users[UserName] = User{
@@ -213,17 +252,17 @@ func main() {
 		case "Изменить":
 			if Users[UserName].State == "Show templ" {
 				Users[UserName] = User{
-					Name:       UserName,
-					ID:         UserID,
-					State:      "Edit tmp",
-					PickedList: Users[UserName].PickedList,
+					Name:  UserName,
+					ID:    UserID,
+					State: "Edit tmp",
+					Data:  Users[UserName].Data,
 				}
 			}
 		case "Удалить":
 			if Users[UserName].State == "Show templ" {
 				TData <- TransactData{
 					UserName: UserName,
-					Data:     Users[UserName].PickedList,
+					Data:     Users[UserName].Data,
 					Command:  "delete templ",
 				}
 				Users[UserName] = User{
@@ -231,6 +270,19 @@ func main() {
 					ID:    UserID,
 					State: "Templates",
 				}
+			} else if Users[UserName].State == "Delete from list" {
+				TData <- TransactData{
+					UserName: UserName,
+					Data:     Users[UserName].Data,
+					Command:  "delete List",
+				}
+				Users[UserName] = User{
+					Name:  UserName,
+					ID:    UserID,
+					State: "Lists",
+				}
+				<-TData
+				ShowCheckList(Users[UserName], bot)
 			}
 		case "Добавить новый лист из шаблона":
 			ShowTemplates(Users[UserName], bot, "add")
@@ -251,7 +303,7 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Lists":
-			ShowCheckList(Users[UserName], bot)
+			// ShowCheckList(Users[UserName], bot)
 			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый лист из шаблона"))
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
@@ -267,36 +319,27 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case "Add tmp name":
-			if len(update.Message.Text) > 26 {
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: "Add tmp name",
-				}
-				msg := tg.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
-				bot.Send(msg)
-			} else {
-				TData <- TransactData{
-					UserName: update.Message.From.UserName,
-					Data:     update.Message.Text,
-					Command:  "add name",
-				}
-				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
-				keyboard := tg.NewReplyKeyboard(keyRow1)
-				msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
-				msg.ReplyMarkup = keyboard
-				bot.Send(msg)
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: "Add tmp item",
-				}
+			TData <- TransactData{
+				UserName: update.Message.From.UserName,
+				Data:     update.Message.Text,
+				Command:  "add name",
 			}
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+			keyboard := tg.NewReplyKeyboard(keyRow1)
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			Users[UserName] = User{
+				Name:  UserName,
+				ID:    UserID,
+				State: "Add tmp item",
+			}
+
 		case "Add tmp":
 			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
@@ -311,45 +354,34 @@ func main() {
 				Command:  "add item",
 			}
 		case "Edit tmp name":
-			if len(update.Message.Text) > 26 {
-				Users[UserName] = User{
-					Name:       UserName,
-					ID:         UserID,
-					State:      "Edit tmp name",
-					PickedList: Users[UserName].PickedList,
-				}
-				msg := tg.NewMessage(Users[UserName].ID, "Название слишком длинное, попробуйте другое")
-				bot.Send(msg)
-			} else {
-				TData <- TransactData{
-					UserName: UserName,
-					Data:     update.Message.Text,
-					Command:  "add name",
-				}
-				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
-				keyboard := tg.NewReplyKeyboard(keyRow1)
-				msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
-				msg.ReplyMarkup = keyboard
-				bot.Send(msg)
-				Users[UserName] = User{
-					Name:       UserName,
-					ID:         UserID,
-					State:      "Edit tmp item",
-					PickedList: Users[UserName].PickedList,
-				}
+			TData <- TransactData{
+				UserName: UserName,
+				Data:     update.Message.Text,
+				Command:  "add name",
+			}
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+			keyboard := tg.NewReplyKeyboard(keyRow1)
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			Users[UserName] = User{
+				Name:  UserName,
+				ID:    UserID,
+				State: "Edit tmp item",
+				Data:  Users[UserName].Data,
 			}
 		case "Edit tmp":
 			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона (26 символов)")
+			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			Users[UserName] = User{
-				Name:       UserName,
-				ID:         UserID,
-				State:      "Edit tmp name",
-				PickedList: Users[UserName].PickedList,
+				Name:  UserName,
+				ID:    UserID,
+				State: "Edit tmp name",
+				Data:  Users[UserName].Data,
 			}
 		case "Edit tmp item":
 			TData <- TransactData{
@@ -361,11 +393,11 @@ func main() {
 	}
 }
 
-func RemoveCheckList(u []CheckList, listName string) []CheckList {
+func RemoveCheckList(u []CheckList, listID string) []CheckList {
 	var id int
 	id = -1
 	for i := range u {
-		if u[i].Name == listName {
+		if u[i].ID == listID {
 			id = i
 			break
 		}
@@ -374,7 +406,7 @@ func RemoveCheckList(u []CheckList, listName string) []CheckList {
 	return append(u[:id], u[id+1:]...)
 }
 
-func ShowList(listName string, user User, bot *tg.BotAPI) {
+func ShowList(ListID string, user User, bot *tg.BotAPI) {
 	filePath := "AppData/" + user.Name + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -389,7 +421,7 @@ func ShowList(listName string, user User, bot *tg.BotAPI) {
 
 	reply := ""
 	for i := range templ.CheckLists {
-		if templ.CheckLists[i].Name == listName {
+		if templ.CheckLists[i].ID == ListID {
 			for y := range templ.CheckLists[i].Items {
 				reply += templ.CheckLists[i].Items[y].Name + "\n"
 			}
@@ -425,9 +457,10 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 	var count int = 0
 	for i := range templ.CheckLists {
 		lName := templ.CheckLists[i].Name
+		lID := templ.CheckLists[i].ID
 		var cbData CallbackData = CallbackData{
-			ListName: lName,
-			Command:  "check list",
+			ListID:  lID,
+			Command: "check list",
 		}
 		outData, _ := json.Marshal(&cbData)
 		keys = append(keys, []tg.InlineKeyboardButton{})
@@ -435,13 +468,18 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 		count++
 		for j := range templ.CheckLists[i].Items {
 			iName := templ.CheckLists[i].Items[j].Name
+			iID := templ.CheckLists[i].Items[j].ID
 			var cbData CallbackData = CallbackData{
-				ListName: iName,
-				Command:  "check item",
+				ListID:  iID,
+				Command: "check item",
 			}
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
-			keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName, string(outData)))
+			if templ.CheckLists[i].Items[j].State {
+				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName+" ☑", string(outData)))
+			} else {
+				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName, string(outData)))
+			}
 			count++
 		}
 	}
@@ -472,21 +510,28 @@ func ShowTemplates(user User, bot *tg.BotAPI, command string) {
 		var keys [][]tg.InlineKeyboardButton
 		for i := range templ.CheckLists {
 			name := templ.CheckLists[i].Name
+			id := templ.CheckLists[i].ID
 			var cbData CallbackData
 			if command == "show" {
 				cbData = CallbackData{
-					ListName: name,
-					Command:  "show templ",
+					ListID:  id,
+					Command: "show templ",
 				}
 			} else if command == "add" {
 				cbData = CallbackData{
-					ListName: name,
-					Command:  "add to list",
+					ListID:  id,
+					Command: "add to list",
 				}
 			}
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
-			keys[i] = append(keys[i], tg.NewInlineKeyboardButtonData(name, string(outData)))
+
+			var rerrr string = string(outData)
+			var qqqqq *string = &rerrr
+			keys[i] = append(keys[i], tg.InlineKeyboardButton{
+				CallbackData: qqqqq,
+				Text:         name,
+			})
 		}
 		keyboard := tg.NewInlineKeyboardMarkup(keys...)
 		msg := tg.NewMessage(user.ID, reply)
@@ -537,14 +582,17 @@ func DataBase(TData chan TransactData) {
 		case "add name":
 			CL[ldata.UserName] = CheckList{
 				Name: ldata.Data,
+				ID:   xid.New().String(),
 			}
 
 		case "add item":
 			if len(CL[ldata.UserName].Items) == 0 {
 				CL[ldata.UserName] = CheckList{
 					Name: CL[ldata.UserName].Name,
+					ID:   CL[ldata.UserName].ID,
 					Items: []Item{{
 						Name:  ldata.Data,
+						ID:    xid.New().String(),
 						State: false,
 					}},
 				}
@@ -555,10 +603,12 @@ func DataBase(TData chan TransactData) {
 				}
 				lItems = append(lItems, Item{
 					Name:  ldata.Data,
+					ID:    xid.New().String(),
 					State: false,
 				})
 				CL[ldata.UserName] = CheckList{
 					Name:  CL[ldata.UserName].Name,
+					ID:    CL[ldata.UserName].ID,
 					Items: lItems,
 				}
 			}
@@ -576,7 +626,7 @@ func DataBase(TData chan TransactData) {
 				log.Fatal("Invalid settings format:", err)
 			}
 			for i := range templ.CheckLists {
-				if templ.CheckLists[i].Name == ldata.Data {
+				if templ.CheckLists[i].ID == ldata.Data {
 					templ.CheckLists[i] = CL[ldata.UserName]
 					break
 				}
@@ -671,7 +721,7 @@ func DataBase(TData chan TransactData) {
 
 			var cl3 CheckList
 			for i := range cl1.CheckLists {
-				if cl1.CheckLists[i].Name == ldata.Data {
+				if cl1.CheckLists[i].ID == ldata.Data {
 					cl3 = cl1.CheckLists[i]
 				}
 			}
@@ -685,7 +735,95 @@ func DataBase(TData chan TransactData) {
 			if err != nil {
 				log.Fatal("Cannot write updated settings file:", err)
 			}
+			TData <- TransactData{}
+		case "delete List":
+			filePath := "AppData/" + ldata.UserName + ".json"
+			rawDataIn, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
 
+			var templ CheckListJson
+			err = json.Unmarshal(rawDataIn, &templ)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+			templ.CheckLists = RemoveCheckList(templ.CheckLists, ldata.Data)
+			rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+			if err != nil {
+				log.Fatal("JSON marshaling failed:", err)
+			}
+
+			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			if err != nil {
+				log.Fatal("Cannot write updated settings file:", err)
+			}
+			TData <- TransactData{}
+		case "check item":
+			filePath := "AppData/" + ldata.UserName + ".json"
+			rawDataIn, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.Fatal("Cannot load settings:", err)
+			}
+
+			var templ CheckListJson
+			err = json.Unmarshal(rawDataIn, &templ)
+			if err != nil {
+				log.Fatal("Invalid settings format:", err)
+			}
+
+			count := 0
+			for i := range templ.CheckLists {
+				for j := range templ.CheckLists[i].Items {
+					if templ.CheckLists[i].Items[j].State == true {
+						count++
+					}
+					if ldata.Data == templ.CheckLists[i].Items[j].ID {
+						templ.CheckLists[i].Items[j].State = true
+					}
+				}
+			}
+			rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+			if err != nil {
+				log.Fatal("JSON marshaling failed:", err)
+			}
+
+			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			if err != nil {
+				log.Fatal("Cannot write updated settings file:", err)
+			}
+			TData <- TransactData{}
 		}
+	}
+}
+
+func CheckItem(user User, bot *tg.BotAPI) {
+	filePath := "AppData/" + user.Name + ".json"
+	rawDataIn, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Fatal("Cannot load settings:", err)
+	}
+
+	var templ CheckListJson
+	err = json.Unmarshal(rawDataIn, &templ)
+	if err != nil {
+		log.Fatal("Invalid settings format:", err)
+	}
+
+	for i := range templ.CheckLists {
+		for j := range templ.CheckLists[i].Items {
+			if user.Data == templ.CheckLists[i].Items[j].ID {
+				templ.CheckLists[i].Items[j].State = true
+			}
+		}
+	}
+	rawDataOut, err := json.MarshalIndent(&templ, "", "  ")
+	if err != nil {
+		log.Fatal("JSON marshaling failed:", err)
+	}
+
+	err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+	if err != nil {
+		log.Fatal("Cannot write updated settings file:", err)
 	}
 }
