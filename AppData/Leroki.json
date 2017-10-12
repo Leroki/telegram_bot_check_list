@@ -1,25 +1,3 @@
 {
-  "lists": [
-    {
-      "name": "Шаблон1",
-      "items": [
-        {
-          "name": "1итем",
-          "state": false
-        },
-        {
-          "name": "2итем",
-          "state": false
-        },
-        {
-          "name": "3итем",
-          "state": false
-        },
-        {
-          "name": "4итем",
-          "state": false
-        }
-      ]
-    }
-  ]
+  "lists": []
 }

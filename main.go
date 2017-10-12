@@ -1,4 +1,4 @@
-package telegram_bot_check_list
+package main
 
 import (
 	"encoding/json"
@@ -464,7 +464,7 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 		}
 		outData, _ := json.Marshal(&cbData)
 		keys = append(keys, []tg.InlineKeyboardButton{})
-		keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(lName+" ⏬", string(outData)))
+		keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData("⏬   "+lName+"   ⏬", string(outData)))
 		count++
 		for j := range templ.CheckLists[i].Items {
 			iName := templ.CheckLists[i].Items[j].Name
@@ -476,7 +476,7 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
 			if templ.CheckLists[i].Items[j].State {
-				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName+" ☑", string(outData)))
+				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName+"   ☑", string(outData)))
 			} else {
 				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName, string(outData)))
 			}
@@ -697,7 +697,7 @@ func DataBase(TData chan TransactData) {
 
 		case "add from templ":
 			file1 := "AppData/" + ldata.UserName + ".tem.json"
-			file2 := "Appdata/" + ldata.UserName + ".json"
+			file2 := "AppData/" + ldata.UserName + ".json"
 
 			rawDataIn1, err := ioutil.ReadFile(file1)
 			if err != nil {

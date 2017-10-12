@@ -1,39 +1,27 @@
 {
   "lists": [
     {
-      "name": "Шаблон1",
+      "name": "hello",
+      "id": "b7flhmvfedahqqlnero0",
       "items": [
         {
-          "name": "1итем",
+          "name": "q1",
+          "id": "b7flhnffedahqqlnerog",
           "state": false
         },
         {
-          "name": "2итем",
+          "name": "q2",
+          "id": "b7flhnnfedahqqlnerp0",
           "state": false
         },
         {
-          "name": "3итем",
+          "name": "q3",
+          "id": "b7flhnvfedahqqlnerpg",
           "state": false
         },
         {
-          "name": "4итем",
-          "state": false
-        }
-      ]
-    },
-    {
-      "name": "Шаблон2",
-      "items": [
-        {
-          "name": "итем1",
-          "state": false
-        },
-        {
-          "name": "итем2",
-          "state": false
-        },
-        {
-          "name": "итем3",
+          "name": "q4",
+          "id": "b7flhoffedahqqlnerq0",
           "state": false
         }
       ]
