@@ -2,3 +2,4 @@ config.json
 telegram_bot_check_list
 server
 .idea/
+AppData/*
