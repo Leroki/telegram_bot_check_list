@@ -1,4 +1,4 @@
-package telegram_bot_check_list
+package main
 
 import (
 	"encoding/json"
