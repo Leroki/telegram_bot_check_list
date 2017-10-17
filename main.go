@@ -476,7 +476,7 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 			outData, _ := json.Marshal(&cbData)
 			keys = append(keys, []tg.InlineKeyboardButton{})
 			if templ.CheckLists[i].Items[j].State {
-				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName+"   ☑", string(outData)))
+				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData("☑   "+iName, string(outData)))
 			} else {
 				keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData(iName, string(outData)))
 			}
