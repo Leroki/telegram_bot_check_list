@@ -75,6 +75,7 @@ func main() {
 
 	// http
 	updates := bot.ListenForWebhook("/" + bot.Token)
+	log.Println("lalalal")
 
 	var Users map[string]User = make(map[string]User)
 
