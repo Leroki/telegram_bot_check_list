@@ -49,8 +49,9 @@ type CallbackData struct {
 
 func main() {
 	os.Mkdir("AppData", os.ModePerm)
-	token := os.Getenv("bot_api")
-	log.Println(token)
+	token := os.Getenv("bot_token")
+	token1 := os.Getenv("token")
+	log.Println(token + token1)
 	file, _ := os.Open("configs/config.json")
 	decoder := json.NewDecoder(file)
 	configuration := Config{}
