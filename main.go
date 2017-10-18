@@ -67,15 +67,10 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	// for long pooling
 	u := tg.NewUpdate(0)
 	u.Timeout = 60
 
 	updates, err := bot.GetUpdatesChan(u)
-
-	// http
-	/*updates := bot.ListenForWebhook("/" + bot.Token)
-	log.Println("lalalal")*/
 
 	var Users map[string]User = make(map[string]User)
 
