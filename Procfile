@@ -1,0 +1,1 @@
+worker: telegram_bot_check_list
