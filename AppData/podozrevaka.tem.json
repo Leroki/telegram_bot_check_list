@@ -1,0 +1,31 @@
+{
+  "lists": [
+    {
+      "name": "шаблон2",
+      "id": "b7in4clp6q80fh58mjfg",
+      "items": [
+        {
+          "name": "элемент1",
+          "id": "b7in4e5p6q80fh58mjgg",
+          "state": false
+        },
+        {
+          "name": "элемент2",
+          "id": "b7in4fdp6q80fh58mjh0",
+          "state": false
+        }
+      ]
+    },
+    {
+      "name": "шаблон3",
+      "id": "b7in4jtp6q80fh58mjig",
+      "items": [
+        {
+          "name": "элемент1",
+          "id": "b7in4ltp6q80fh58mjj0",
+          "state": false
+        }
+      ]
+    }
+  ]
+}
