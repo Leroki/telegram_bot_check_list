@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-
 	/* "strings" */ /* "strconv" */)
 
 type Config struct {
@@ -69,10 +68,10 @@ func main() {
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	// for long pooling
-	/*u := tg.NewUpdate(0)
+	u := tg.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, err := bot.GetUpdatesChan(u)*/
+	/*updates, err := bot.GetUpdatesChan(u)*/
 
 	// http
 	updates := bot.ListenForWebhook("/" + bot.Token)
