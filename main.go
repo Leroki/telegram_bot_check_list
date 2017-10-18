@@ -9,10 +9,6 @@ import (
 	"os"
 	/* "strings" */ /* "strconv" */)
 
-type Config struct {
-	TelegramBotToken string
-}
-
 type Item struct {
 	Name  string `json:"name"`
 	ID    string `json:"id"`
@@ -49,19 +45,10 @@ type CallbackData struct {
 
 func main() {
 	os.Mkdir("AppData", os.ModePerm)
-	token := os.Getenv("bot_token")
-	token1 := os.Getenv("token")
-	log.Println(token + token1)
-	file, _ := os.Open("configs/config.json")
-	decoder := json.NewDecoder(file)
-	configuration := Config{}
-	err := decoder.Decode(&configuration)
-	if err != nil {
-		log.Panic(err)
-	}
-	file.Close()
 
-	bot, err := tg.NewBotAPI(configuration.TelegramBotToken)
+	token := os.Getenv("bot_token")
+
+	bot, err := tg.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
 	}
