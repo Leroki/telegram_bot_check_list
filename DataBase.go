@@ -229,3 +229,16 @@ func DataBase(TData chan TransactData) {
 		}
 	}
 }
+
+func RemoveCheckList(u []CheckList, listID string) []CheckList {
+	var id int
+	id = -1
+	for i := range u {
+		if u[i].ID == listID {
+			id = i
+			break
+		}
+	}
+
+	return append(u[:id], u[id+1:]...)
+}

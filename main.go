@@ -348,19 +348,6 @@ func main() {
 	}
 }
 
-func RemoveCheckList(u []CheckList, listID string) []CheckList {
-	var id int
-	id = -1
-	for i := range u {
-		if u[i].ID == listID {
-			id = i
-			break
-		}
-	}
-
-	return append(u[:id], u[id+1:]...)
-}
-
 func ShowList(ListID string, user User, bot *tg.BotAPI) {
 	filePath := "AppData/" + user.Name + ".tem.json"
 	rawDataIn, err := ioutil.ReadFile(filePath)
