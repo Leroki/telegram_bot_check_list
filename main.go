@@ -406,7 +406,7 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 		}
 		outData, _ := json.Marshal(&cbData)
 		keys = append(keys, []tg.InlineKeyboardButton{})
-		keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData("⏬   "+lName+"   ⏬", string(outData)))
+		keys[count] = append(keys[count], tg.NewInlineKeyboardButtonData("⏬  "+lName+"  ⏬", string(outData)))
 		count++
 		for j := range temp.CheckLists[i].Items {
 			iName := temp.CheckLists[i].Items[j].Name

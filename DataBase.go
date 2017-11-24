@@ -5,9 +5,19 @@ import (
 	"github.com/rs/xid"
 	"io/ioutil"
 	"log"
+	"os"
+
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func DataBase(TData chan TransactData) {
+	session, err := mgo.Dial(os.Getenv("MONGODB_URI"))
+	if err != nil {
+		panic(err)
+	}
+	defer session.Close()
+
 	var CL = make(map[string]CheckList)
 	for {
 		locData := <-TData
