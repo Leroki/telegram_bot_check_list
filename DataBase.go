@@ -192,7 +192,6 @@ func DataBase(TData chan TransactData) {
 			}
 			TData <- TransactData{
 				UserName: locData.UserName,
-				Command:  nil,
 				DataCL: temp,
 			}
 
@@ -204,7 +203,6 @@ func DataBase(TData chan TransactData) {
 			}
 			TData <- TransactData{
 				UserName: locData.UserName,
-				Command:  nil,
 				DataCL: temp,
 			}
 
