@@ -26,3 +26,6 @@ const TRSave byte = 4
 const TREditTemp byte = 5
 const TRDelTemp byte = 6
 const TRDelList byte = 7
+const TRInitUser byte = 8
+const TRReturnTemp byte = 9
+const TRReturnList byte = 10

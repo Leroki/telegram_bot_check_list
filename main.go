@@ -3,14 +3,11 @@ package main
 import (
 	"encoding/json"
 	tg "gopkg.in/telegram-bot-api.v4"
-	"io/ioutil"
 	"log"
 	"os"
 )
 
 func main() {
-	os.Mkdir("AppData", os.ModePerm)
-
 	token := os.Getenv("bot_token")
 
 	bot, err := tg.NewBotAPI(token)
@@ -52,7 +49,7 @@ func main() {
 					State: STShowTemp,
 					Data:  cbData.ListID,
 				}
-				go ShowList(cbData.ListID, Users[UserName], bot)
+				ShowList(cbData.ListID, Users[UserName], bot, &TData)
 			case CBAddToList:
 				TData <- TransactData{
 					Data:     cbData.ListID,
@@ -65,7 +62,7 @@ func main() {
 					State: STList,
 				}
 				<-TData
-				ShowCheckList(Users[UserName], bot)
+				ShowCheckList(Users[UserName], bot, &TData)
 
 			case CBCheckList:
 				Users[UserName] = User{
@@ -94,7 +91,7 @@ func main() {
 					State: STList,
 				}
 				<-TData
-				ShowCheckList(Users[UserName], bot)
+				ShowCheckList(Users[UserName], bot, &TData)
 			}
 		}
 
@@ -123,7 +120,11 @@ func main() {
 		case "start":
 			msg := tg.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
 			bot.Send(msg)
-			InitUser(UserName)
+			TData <- TransactData{
+				UserName: UserName,
+				Data:     "",
+				Command:  TRInitUser,
+			}
 		case "stop":
 			msg := tg.NewMessage(UserID, "Пока "+update.Message.From.FirstName+"!")
 			bot.Send(msg)
@@ -144,7 +145,7 @@ func main() {
 				ID:    UserID,
 				State: STList,
 			}
-			ShowCheckList(Users[UserName], bot)
+			ShowCheckList(Users[UserName], bot, &TData)
 		case "Шаблоны":
 			Users[UserName] = User{
 				Name:  UserName,
@@ -152,7 +153,7 @@ func main() {
 				State: STTemplates,
 			}
 		case "Показать мои шаблоны":
-			go ShowTemplates(Users[UserName], bot, "show")
+			go ShowTemplates(Users[UserName], bot, "show", &TData)
 			continue
 		case "Добавить новый шаблон":
 			Users[UserName] = User{
@@ -237,10 +238,10 @@ func main() {
 					State: STList,
 				}
 				<-TData
-				ShowCheckList(Users[UserName], bot)
+				ShowCheckList(Users[UserName], bot, &TData)
 			}
 		case "Добавить новый лист из шаблона":
-			ShowTemplates(Users[UserName], bot, "add")
+			ShowTemplates(Users[UserName], bot, "add", &TData)
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
@@ -348,18 +349,13 @@ func main() {
 	}
 }
 
-func ShowList(ListID string, user User, bot *tg.BotAPI) {
-	filePath := "AppData/" + user.Name + ".tem.json"
-	rawDataIn, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal("Cannot load settings:", err)
+func ShowList(ListID string, user User, bot *tg.BotAPI, TData *chan TransactData) {
+	*TData <- TransactData{
+		UserName: user.Name,
+		Command:  TRReturnTemp,
 	}
-
-	var temp CheckListJson
-	err = json.Unmarshal(rawDataIn, &temp)
-	if err != nil {
-		log.Fatal("Invalid settings format:", err)
-	}
+	var locTData = <-*TData
+	var temp = locTData.DataCL
 
 	reply := ""
 	for i := range temp.CheckLists {
@@ -382,18 +378,15 @@ func ShowList(ListID string, user User, bot *tg.BotAPI) {
 	bot.Send(msg)
 }
 
-func ShowCheckList(user User, bot *tg.BotAPI) {
-	filePath := "AppData/" + user.Name + ".json"
-	rawDataIn, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal("Cannot load settings:", err)
+func ShowCheckList(user User, bot *tg.BotAPI, TData *chan TransactData) {
+	*TData <- TransactData{
+		UserName: user.Name,
+		Command:  TRReturnList,
 	}
 
-	var temp CheckListJson
-	err = json.Unmarshal(rawDataIn, &temp)
-	if err != nil {
-		log.Fatal("Invalid settings format:", err)
-	}
+	var locTData = <-*TData
+	var temp = locTData.DataCL
+
 	reply := "Ваши листы"
 	var keys [][]tg.InlineKeyboardButton
 	var count = 0
@@ -431,23 +424,19 @@ func ShowCheckList(user User, bot *tg.BotAPI) {
 	bot.Send(msg)
 }
 
-func ShowTemplates(user User, bot *tg.BotAPI, command string) {
-	filePath := "AppData/" + user.Name + ".tem.json"
-	rawDataIn, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Fatal("Cannot load settings:", err)
+func ShowTemplates(user User, bot *tg.BotAPI, command string, TData *chan TransactData) {
+	*TData <- TransactData{
+		UserName: user.Name,
+		Command:  TRReturnTemp,
 	}
+	var locTData = <-*TData
+	var temp = locTData.DataCL
 
-	if len(rawDataIn) == 17 || len(rawDataIn) == 19 {
+	if len(temp.CheckLists) == 0 {
 		reply := "У вас нет шаблонов, вы можете их добавить"
 		msg := tg.NewMessage(user.ID, reply)
 		bot.Send(msg)
 	} else {
-		var temp CheckListJson
-		err = json.Unmarshal(rawDataIn, &temp)
-		if err != nil {
-			log.Fatal("Invalid settings format:", err)
-		}
 		reply := "Ваши шаблоны"
 		var keys [][]tg.InlineKeyboardButton
 		for i := range temp.CheckLists {
@@ -473,39 +462,5 @@ func ShowTemplates(user User, bot *tg.BotAPI, command string) {
 		msg := tg.NewMessage(user.ID, reply)
 		msg.ReplyMarkup = keyboard
 		bot.Send(msg)
-	}
-}
-
-func InitUser(UserName string) {
-	// user lists
-	file1 := "AppData/" + UserName + ".json"
-	os.Create(file1)
-
-	clu := CheckListJson{}
-	var rawDataOut []byte
-	var err error
-	rawDataOut, err = json.MarshalIndent(&clu, "", "  ")
-	if err != nil {
-		log.Fatal("JSON marshaling failed:", err)
-	}
-
-	err = ioutil.WriteFile(file1, rawDataOut, 0664)
-	if err != nil {
-		log.Fatal("Cannot write updated settings file:", err)
-	}
-
-	// user templates
-	file2 := "AppData/" + UserName + ".tem.json"
-	os.Create(file2)
-
-	clt := CheckListJson{}
-	rawDataOut, err = json.MarshalIndent(&clt, "", "  ")
-	if err != nil {
-		log.Fatal("JSON marshaling failed:", err)
-	}
-
-	err = ioutil.WriteFile(file2, rawDataOut, 0664)
-	if err != nil {
-		log.Fatal("Cannot write updated settings file:", err)
 	}
 }

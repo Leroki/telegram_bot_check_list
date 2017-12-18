@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/rs/xid"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -18,17 +16,34 @@ func DataBase(TData chan TransactData) {
 	}
 	defer session.Close()
 
+	session.SetMode(mgo.Monotonic, true)
+
+	checkListTempDB := session.DB("heroku_lqwvt43d").C("CheckListTemplate")
+	checkListDB := session.DB("heroku_lqwvt43d").C("CheckList")
+
 	var CL = make(map[string]CheckList)
 	for {
 		locData := <-TData
 		switch locData.Command {
-		case TRAddName:
+		case TRInitUser: // Создание пользователя в БД
+			// user check lists
+			err = checkListTempDB.Insert(&CheckListJson{
+				UserName:   locData.UserName,
+				CheckLists: nil,
+			})
+			// user list
+			err = checkListDB.Insert(&CheckListJson{
+				UserName:   locData.UserName,
+				CheckLists: nil,
+			})
+
+		case TRAddName: // Добавление названия чек листа
 			CL[locData.UserName] = CheckList{
 				Name: locData.Data,
 				ID:   xid.New().String(),
 			}
 
-		case TRAddItem:
+		case TRAddItem: // Добавление пунктов чек листа
 			if len(CL[locData.UserName].Items) == 0 {
 				CL[locData.UserName] = CheckList{
 					Name: CL[locData.UserName].Name,
@@ -56,17 +71,11 @@ func DataBase(TData chan TransactData) {
 				}
 			}
 
-		case TREditTemp:
-			filePath := "AppData/" + locData.UserName + ".tem.json"
-			rawDataIn, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				log.Fatal("Cannot load settings:", err)
-			}
-
+		case TREditTemp: // Изменение шаблона
 			var temp CheckListJson
-			err = json.Unmarshal(rawDataIn, &temp)
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
 			if err != nil {
-				log.Fatal("Invalid settings format:", err)
+				log.Fatal(err)
 			}
 			for i := range temp.CheckLists {
 				if temp.CheckLists[i].ID == locData.Data {
@@ -75,91 +84,51 @@ func DataBase(TData chan TransactData) {
 				}
 			}
 
-			rawDataOut, err := json.MarshalIndent(&temp, "", "  ")
+			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
 			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
-			}
-
-			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
-			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
+				log.Fatal(err)
 			}
 			delete(CL, locData.UserName)
 
-		case TRSave:
-			filePath := "AppData/" + locData.UserName + ".tem.json"
-			rawDataIn, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				log.Fatal("Cannot load settings:", err)
-			}
-
+		case TRSave: // Запись изменений или новых данных в БД
 			var temp CheckListJson
-			if len(rawDataIn) == 0 {
-				temp.CheckLists = append(temp.CheckLists, CL[locData.UserName])
-			} else {
-				err = json.Unmarshal(rawDataIn, &temp)
-				if err != nil {
-					log.Fatal("Invalid settings format:", err)
-				}
-				temp.CheckLists = append(temp.CheckLists, CL[locData.UserName])
-			}
-
-			rawDataOut, err := json.MarshalIndent(&temp, "", "  ")
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
 			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
+				log.Fatal(err)
 			}
+			temp.CheckLists = append(temp.CheckLists, CL[locData.UserName])
 
-			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
 			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
+				log.Fatal(err)
 			}
 			delete(CL, locData.UserName)
 
-		case TRDelTemp:
-			filePath := "AppData/" + locData.UserName + ".tem.json"
-			rawDataIn, err := ioutil.ReadFile(filePath)
+		case TRDelTemp: // Удаление шаблона
+			var temp CheckListJson
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
 			if err != nil {
-				log.Fatal("Cannot load settings:", err)
+				log.Fatal(err)
 			}
 
-			var temp CheckListJson
-			err = json.Unmarshal(rawDataIn, &temp)
-			if err != nil {
-				log.Fatal("Invalid settings format:", err)
-			}
 			temp.CheckLists = RemoveCheckList(temp.CheckLists, locData.Data)
-			rawDataOut, err := json.MarshalIndent(&temp, "", "  ")
+
+			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
 			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
+				log.Fatal(err)
 			}
 
-			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
-			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
-			}
-
-		case TRAddFromTemp:
-			file1 := "AppData/" + locData.UserName + ".tem.json"
-			file2 := "AppData/" + locData.UserName + ".json"
-
-			rawDataIn1, err := ioutil.ReadFile(file1)
-			if err != nil {
-				log.Fatal("Cannot load settings:", err)
-			}
-			rawDataIn2, err := ioutil.ReadFile(file2)
-			if err != nil {
-				log.Fatal("Cannot load settings:", err)
-			}
-
+		case TRAddFromTemp: // Добавление Листа из шаблона
 			var cl1 CheckListJson
-			err = json.Unmarshal(rawDataIn1, &cl1)
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&cl1)
 			if err != nil {
-				log.Fatal("Invalid settings format:", err)
+				log.Fatal(err)
 			}
+
 			var cl2 CheckListJson
-			err = json.Unmarshal(rawDataIn2, &cl2)
+			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&cl2)
 			if err != nil {
-				log.Fatal("Invalid settings format:", err)
+				log.Fatal(err)
 			}
 
 			var cl3 CheckList
@@ -168,51 +137,33 @@ func DataBase(TData chan TransactData) {
 					cl3 = cl1.CheckLists[i]
 				}
 			}
+
 			cl2.CheckLists = append(cl2.CheckLists, cl3)
-			rawDataOut, err := json.MarshalIndent(&cl2, "", "  ")
+			err = checkListDB.Update(bson.M{"username": locData.UserName}, &cl2)
 			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
-			}
-
-			err = ioutil.WriteFile(file2, rawDataOut, 0664)
-			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
+				log.Fatal(err)
 			}
 			TData <- TransactData{}
-		case TRDelList:
-			filePath := "AppData/" + locData.UserName + ".json"
-			rawDataIn, err := ioutil.ReadFile(filePath)
+
+		case TRDelList: // Удаление листа
+			var temp CheckListJson
+			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
 			if err != nil {
-				log.Fatal("Cannot load settings:", err)
+				log.Fatal(err)
 			}
 
-			var temp CheckListJson
-			err = json.Unmarshal(rawDataIn, &temp)
-			if err != nil {
-				log.Fatal("Invalid settings format:", err)
-			}
 			temp.CheckLists = RemoveCheckList(temp.CheckLists, locData.Data)
-			rawDataOut, err := json.MarshalIndent(&temp, "", "  ")
+			err = checkListDB.Update(bson.M{"username": locData.UserName}, &temp)
 			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
-			}
-
-			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
-			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
+				log.Fatal(err)
 			}
 			TData <- TransactData{}
-		case TRCheckItem:
-			filePath := "AppData/" + locData.UserName + ".json"
-			rawDataIn, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				log.Fatal("Cannot load settings:", err)
-			}
 
+		case TRCheckItem: // Отметка пункта листа
 			var temp CheckListJson
-			err = json.Unmarshal(rawDataIn, &temp)
+			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
 			if err != nil {
-				log.Fatal("Invalid settings format:", err)
+				log.Fatal(err)
 			}
 
 			count := 0
@@ -226,16 +177,37 @@ func DataBase(TData chan TransactData) {
 					}
 				}
 			}
-			rawDataOut, err := json.MarshalIndent(&temp, "", "  ")
-			if err != nil {
-				log.Fatal("JSON marshaling failed:", err)
-			}
 
-			err = ioutil.WriteFile(filePath, rawDataOut, 0664)
+			err = checkListDB.Update(bson.M{"username": locData.UserName}, &temp)
 			if err != nil {
-				log.Fatal("Cannot write updated settings file:", err)
+				log.Fatal(err)
 			}
 			TData <- TransactData{}
+
+		case TRReturnTemp:
+			var temp CheckListJson
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			if err != nil {
+				log.Fatal(err)
+			}
+			TData <- TransactData{
+				UserName: locData.UserName,
+				Command:  nil,
+				DataCL: temp,
+			}
+
+		case TRReturnList:
+			var temp CheckListJson
+			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			if err != nil {
+				log.Fatal(err)
+			}
+			TData <- TransactData{
+				UserName: locData.UserName,
+				Command:  nil,
+				DataCL: temp,
+			}
+
 		}
 	}
 }

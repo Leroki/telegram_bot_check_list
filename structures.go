@@ -13,6 +13,7 @@ type CheckList struct {
 }
 
 type CheckListJson struct {
+	UserName   string      `json:"user_name"`
 	CheckLists []CheckList `json:"lists"`
 }
 
@@ -27,6 +28,7 @@ type TransactData struct {
 	UserName string
 	Data     string
 	Command  byte
+	DataCL   CheckListJson
 }
 
 type CallbackData struct {
