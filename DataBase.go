@@ -27,15 +27,48 @@ func DataBase(TData chan TransactData) {
 		switch locData.Command {
 		case TRInitUser: // Создание пользователя в БД
 			// user check lists
-			err = checkListTempDB.Insert(&CheckListJson{
-				UserName:   locData.UserName,
-				CheckLists: nil,
-			})
+			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&CheckListJson{})
+			if err == nil {
+				err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &CheckListJson{
+					UserName:   locData.UserName,
+					CheckLists: nil,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else if err.Error() == "not found" {
+				err = checkListTempDB.Insert(&CheckListJson{
+					UserName:   locData.UserName,
+					CheckLists: nil,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				log.Fatal(err)
+			}
+
 			// user list
-			err = checkListDB.Insert(&CheckListJson{
-				UserName:   locData.UserName,
-				CheckLists: nil,
-			})
+			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&CheckListJson{})
+			if err == nil {
+				err = checkListDB.Update(bson.M{"username": locData.UserName}, &CheckListJson{
+					UserName:   locData.UserName,
+					CheckLists: nil,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else if err.Error() == "not found" {
+				err = checkListDB.Insert(&CheckListJson{
+					UserName:   locData.UserName,
+					CheckLists: nil,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				log.Fatal(err)
+			}
 
 		case TRAddName: // Добавление названия чек листа
 			CL[locData.UserName] = CheckList{
@@ -192,7 +225,7 @@ func DataBase(TData chan TransactData) {
 			}
 			TData <- TransactData{
 				UserName: locData.UserName,
-				DataCL: temp,
+				DataCL:   temp,
 			}
 
 		case TRReturnList:
@@ -203,7 +236,7 @@ func DataBase(TData chan TransactData) {
 			}
 			TData <- TransactData{
 				UserName: locData.UserName,
-				DataCL: temp,
+				DataCL:   temp,
 			}
 
 		}
