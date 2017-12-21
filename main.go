@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	tg "gopkg.in/telegram-bot-api.v4"
 	"log"
 	"os"
+
+	tg "gopkg.in/telegram-bot-api.v4"
 )
 
 func main() {
