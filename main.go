@@ -37,11 +37,13 @@ func main() {
 			UserName := update.CallbackQuery.From.UserName
 			UserID := int64(update.CallbackQuery.From.ID)
 			query := update.CallbackQuery
+
 			var cbData CallbackData
 			err := json.Unmarshal([]byte(query.Data), &cbData)
 			if err != nil {
 				log.Fatal("Invalid settings format:", err)
 			}
+
 			switch cbData.Command {
 			case CBShowTemp:
 				Users[UserName] = User{
@@ -51,6 +53,7 @@ func main() {
 					Data:  cbData.ListID,
 				}
 				ShowList(cbData.ListID, Users[UserName], bot, &TData)
+
 			case CBAddToList:
 				TData <- TransactData{
 					Data:     cbData.ListID,
