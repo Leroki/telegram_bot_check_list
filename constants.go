@@ -29,3 +29,18 @@ const TRDelList byte = 7
 const TRInitUser byte = 8
 const TRReturnTemp byte = 9
 const TRReturnList byte = 10
+
+const CMDStart = "start"
+const CMDStop = "stop"
+
+const BTNMain = "В главное меню"
+const BTNLists = "Листы"
+const BTNTemplates = "Шаблоны"
+const BTNShowTemplates = "Показать мои шаблоны"
+const BTNAddTemplate = "Добавить новый шаблон"
+const BTNCancel = "Отмена"
+const BTNBack = "Назад"
+const BTNFinish = "Завершить"
+const BTNEdit = "Изменить"
+const BTNDelete = "Удалить"
+const BTNAddListFromTemplate = "Добавить новый лист из шаблона"

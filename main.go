@@ -118,7 +118,7 @@ func main() {
 		// свитч на обработку комманд
 		// комманда - сообщение, начинающееся с "/"
 		switch update.Message.Command() {
-		case "start":
+		case CMDStart:
 			msg := tg.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
 			bot.Send(msg)
 			TData <- TransactData{
@@ -126,7 +126,7 @@ func main() {
 				Data:     "",
 				Command:  TRInitUser,
 			}
-		case "stop":
+		case CMDStop:
 			msg := tg.NewMessage(UserID, "Пока "+update.Message.From.FirstName+"!")
 			bot.Send(msg)
 			delete(Users, UserName)
@@ -134,41 +134,41 @@ func main() {
 
 		// обработка кнопок
 		switch update.Message.Text {
-		case "В главное меню":
+		case BTNMain:
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STMain,
 			}
-		case "Листы":
+		case BTNLists:
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STList,
 			}
 			ShowCheckList(Users[UserName], bot, &TData)
-		case "Шаблоны":
+		case BTNTemplates:
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STTemplates,
 			}
-		case "Показать мои шаблоны":
+		case BTNShowTemplates:
 			go ShowTemplates(Users[UserName], bot, "show", &TData)
 			continue
-		case "Добавить новый шаблон":
+		case BTNAddTemplate:
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STAddTmp,
 			}
-		case "Отмена":
+		case BTNCancel:
 			Users[UserName] = User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STTemplates,
 			}
-		case "Назад":
+		case BTNBack:
 			if Users[UserName].State == STShowTemp {
 				Users[UserName] = User{
 					Name:  UserName,
@@ -182,7 +182,7 @@ func main() {
 					State: STList,
 				}
 			}
-		case "Завершить":
+		case BTNFinish:
 			if Users[UserName].State == STAddTmpItem {
 				TData <- TransactData{
 					UserName: UserName,
@@ -206,7 +206,7 @@ func main() {
 					State: STTemplates,
 				}
 			}
-		case "Изменить":
+		case BTNEdit:
 			if Users[UserName].State == STShowTemp {
 				Users[UserName] = User{
 					Name:  UserName,
@@ -215,7 +215,7 @@ func main() {
 					Data:  Users[UserName].Data,
 				}
 			}
-		case "Удалить":
+		case BTNDelete:
 			if Users[UserName].State == STShowTemp {
 				TData <- TransactData{
 					UserName: UserName,
@@ -241,7 +241,7 @@ func main() {
 				<-TData
 				ShowCheckList(Users[UserName], bot, &TData)
 			}
-		case "Добавить новый лист из шаблона":
+		case BTNAddListFromTemplate:
 			ShowTemplates(Users[UserName], bot, "add", &TData)
 			Users[UserName] = User{
 				Name:  UserName,
