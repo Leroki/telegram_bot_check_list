@@ -72,8 +72,8 @@ func main() {
 					ID:    UserID,
 					State: STDeleteFromList,
 				}
-				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Удалить"))
-				keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Назад"))
+				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNDelete))
+				keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNBack))
 				keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
 				msg := tg.NewMessage(Users[UserName].ID, "Вы в главном меню")
 				msg.ReplyMarkup = keyboard
@@ -253,24 +253,24 @@ func main() {
 		// обработка положения в меню
 		switch Users[UserName].State {
 		case STMain:
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Листы"))
-			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Шаблоны"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNLists))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNTemplates))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
 			msg := tg.NewMessage(Users[UserName].ID, "Вы в главном меню")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case STList:
 			// ShowCheckList(Users[UserName], bot)
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый лист из шаблона"))
-			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNAddListFromTemplate))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
 			msg := tg.NewMessage(Users[UserName].ID, "Что сделать?")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case STTemplates:
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Показать мои шаблоны"))
-			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Добавить новый шаблон"))
-			keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNShowTemplates))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNAddTemplate))
+			keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
 			msg := tg.NewMessage(Users[UserName].ID, "Вы в меню шаблонов")
 			msg.ReplyMarkup = keyboard
@@ -281,7 +281,7 @@ func main() {
 				Data:     update.Message.Text,
 				Command:  TRAddName,
 			}
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNFinish))
 			keyboard := tg.NewReplyKeyboard(keyRow1)
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
 			msg.ReplyMarkup = keyboard
@@ -293,8 +293,8 @@ func main() {
 			}
 
 		case STAddTmp:
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
-			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNCancel))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
@@ -316,7 +316,7 @@ func main() {
 				Data:     update.Message.Text,
 				Command:  TRAddName,
 			}
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Завершить"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNFinish))
 			keyboard := tg.NewReplyKeyboard(keyRow1)
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
 			msg.ReplyMarkup = keyboard
@@ -328,8 +328,8 @@ func main() {
 				Data:  Users[UserName].Data,
 			}
 		case STEditTmp:
-			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Отмена"))
-			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("В главное меню"))
+			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNCancel))
+			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
@@ -370,9 +370,9 @@ func ShowList(ListID string, user User, bot *tg.BotAPI, TData *chan TransactData
 	if reply == "" {
 		reply = "Этот шаблон пуст"
 	}
-	keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Изменить"))
-	keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Удалить"))
-	keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton("Назад"))
+	keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNEdit))
+	keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNDelete))
+	keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNBack))
 	keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2, keyRow3)
 	msg := tg.NewMessage(user.ID, reply)
 	msg.ReplyMarkup = keyboard
