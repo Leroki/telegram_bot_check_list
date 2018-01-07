@@ -1,16 +1,17 @@
 package main
 
 import (
-	"github.com/rs/xid"
 	"log"
 	"os"
 
+	"github.com/rs/xid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func DataBase(TData chan TransactData) {
-	session, err := mgo.Dial(os.Getenv("MONGODB_URI"))
+	mongoUri := os.Getenv("MONGODB_URI")
+	session, err := mgo.Dial(mongoUri)
 	if err != nil {
 		panic(err)
 	}
@@ -27,9 +28,9 @@ func DataBase(TData chan TransactData) {
 		switch locData.Command {
 		case TRInitUser: // Создание пользователя в БД
 			// user check lists
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&CheckListJson{})
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&CheckListJson{})
 			if err == nil {
-				err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &CheckListJson{
+				err = checkListTempDB.Update(bson.M{"user_name": locData.UserName}, &CheckListJson{
 					UserName:   locData.UserName,
 					CheckLists: nil,
 				})
@@ -49,9 +50,9 @@ func DataBase(TData chan TransactData) {
 			}
 
 			// user list
-			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&CheckListJson{})
+			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&CheckListJson{})
 			if err == nil {
-				err = checkListDB.Update(bson.M{"username": locData.UserName}, &CheckListJson{
+				err = checkListDB.Update(bson.M{"user_name": locData.UserName}, &CheckListJson{
 					UserName:   locData.UserName,
 					CheckLists: nil,
 				})
@@ -106,7 +107,7 @@ func DataBase(TData chan TransactData) {
 
 		case TREditTemp: // Изменение шаблона
 			var temp CheckListJson
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -117,7 +118,7 @@ func DataBase(TData chan TransactData) {
 				}
 			}
 
-			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
+			err = checkListTempDB.Update(bson.M{"user_name": locData.UserName}, &temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -125,13 +126,13 @@ func DataBase(TData chan TransactData) {
 
 		case TRSave: // Запись изменений или новых данных в БД
 			var temp CheckListJson
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
 			temp.CheckLists = append(temp.CheckLists, CL[locData.UserName])
 
-			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
+			err = checkListTempDB.Update(bson.M{"user_name": locData.UserName}, &temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -139,14 +140,14 @@ func DataBase(TData chan TransactData) {
 
 		case TRDelTemp: // Удаление шаблона
 			var temp CheckListJson
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			temp.CheckLists = RemoveCheckList(temp.CheckLists, locData.Data)
 
-			err = checkListTempDB.Update(bson.M{"username": locData.UserName}, &temp)
+			err = checkListTempDB.Update(bson.M{"user_name": locData.UserName}, &temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -154,13 +155,13 @@ func DataBase(TData chan TransactData) {
 
 		case TRAddFromTemp: // Добавление Листа из шаблона
 			var cl1 CheckListJson
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&cl1)
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&cl1)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			var cl2 CheckListJson
-			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&cl2)
+			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&cl2)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -173,7 +174,7 @@ func DataBase(TData chan TransactData) {
 			}
 
 			cl2.CheckLists = append(cl2.CheckLists, cl3)
-			err = checkListDB.Update(bson.M{"username": locData.UserName}, &cl2)
+			err = checkListDB.Update(bson.M{"user_name": locData.UserName}, &cl2)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -181,13 +182,13 @@ func DataBase(TData chan TransactData) {
 
 		case TRDelList: // Удаление листа
 			var temp CheckListJson
-			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			temp.CheckLists = RemoveCheckList(temp.CheckLists, locData.Data)
-			err = checkListDB.Update(bson.M{"username": locData.UserName}, &temp)
+			err = checkListDB.Update(bson.M{"user_name": locData.UserName}, &temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -195,7 +196,7 @@ func DataBase(TData chan TransactData) {
 
 		case TRCheckItem: // Отметка пункта листа
 			var temp CheckListJson
-			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -208,7 +209,7 @@ func DataBase(TData chan TransactData) {
 				}
 			}
 
-			err = checkListDB.Update(bson.M{"username": locData.UserName}, &temp)
+			err = checkListDB.Update(bson.M{"user_name": locData.UserName}, &temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -216,7 +217,7 @@ func DataBase(TData chan TransactData) {
 
 		case TRReturnTemp:
 			var temp CheckListJson
-			err = checkListTempDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -227,7 +228,7 @@ func DataBase(TData chan TransactData) {
 
 		case TRReturnList:
 			var temp CheckListJson
-			err = checkListDB.Find(bson.M{"username": locData.UserName}).One(&temp)
+			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
 			}
