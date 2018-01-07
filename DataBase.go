@@ -150,6 +150,7 @@ func DataBase(TData chan TransactData) {
 			if err != nil {
 				log.Fatal(err)
 			}
+			TData <- TransactData{}
 
 		case TRAddFromTemp: // Добавление Листа из шаблона
 			var cl1 CheckListJson
