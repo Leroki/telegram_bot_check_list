@@ -36,16 +36,18 @@ const TRReturnList byte = 10
 // команда от пользователя в чате
 const CMDStart = "start"
 const CMDStop = "stop"
+const CMDShow byte = 0
+const CMDAdd byte = 1
 
 // кнопки у бота в чате
 const BTNMain = "В главное меню"
 const BTNLists = "Листы"
 const BTNTemplates = "Шаблоны"
-const BTNShowTemplates = "Показать мои шаблоны"
 const BTNAddTemplate = "Добавить новый шаблон"
 const BTNCancel = "Отмена"
 const BTNBack = "Назад"
 const BTNFinish = "Завершить"
 const BTNEdit = "Изменить"
-const BTNDelete = "Удалить"
+const BTNTemplDelete = "Удалить шаблон"
+const BTNListDelete = "Удалить лист"
 const BTNAddListFromTemplate = "Добавить новый лист из шаблона"
