@@ -37,13 +37,15 @@ func main() {
 			UserName := update.CallbackQuery.From.UserName
 			UserID := int64(update.CallbackQuery.From.ID)
 			query := update.CallbackQuery
+
 			var cbData CallbackData
 			err := json.Unmarshal([]byte(query.Data), &cbData)
 			if err != nil {
 				log.Fatal("Invalid settings format:", err)
 			}
+
 			switch cbData.Command {
-			case CBShowTemp:
+			case CBShowTemp: // call back на показ шаблона
 				Users[UserName] = User{
 					Name:  UserName,
 					ID:    UserID,
@@ -51,7 +53,8 @@ func main() {
 					Data:  cbData.ListID,
 				}
 				ShowList(cbData.ListID, Users[UserName], bot, &TData)
-			case CBAddToList:
+
+			case CBAddToList: // call back на добавление шаблона в чек лист
 				TData <- TransactData{
 					Data:     cbData.ListID,
 					UserName: UserName,
@@ -65,7 +68,7 @@ func main() {
 				<-TData
 				ShowCheckList(Users[UserName], bot, &TData)
 
-			case CBCheckList:
+			case CBCheckList: // call back для показа действий над чек листом
 				Users[UserName] = User{
 					Name:  UserName,
 					Data:  cbData.ListID,
@@ -79,7 +82,7 @@ func main() {
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 
-			case CBCheckItem:
+			case CBCheckItem: // call back для отметки элемента листа
 				TData <- TransactData{
 					Data:     cbData.ListID,
 					UserName: UserName,
