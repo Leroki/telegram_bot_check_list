@@ -4,24 +4,24 @@ import "time"
 
 // Структура элемента листа
 type Item struct {
-	Name  string `json:"name"`
-	ID    string `json:"id"`
-	State bool   `json:"state"`
+	Name  string `bson:"name"`
+	ID    string `bson:"id"`
+	State bool   `bson:"state"`
 }
 
 // структура листа
 type CheckList struct {
-	Name  string `json:"name"`
-	ID    string `json:"id"`
+	Name      string    `bson:"name"`
+	ID        string    `bson:"id"`
 	TimeStart time.Time `bson:"time_start"`
-	FlagStart bool `bson:"flag_start"`
-	Items []Item `json:"items"`
+	FlagStart bool      `bson:"flag_start"`
+	Items     []Item    `bson:"items"`
 }
 
 // структура хранения листов
 type CheckListJson struct {
-	UserName   string      `json:"user_name"`
-	CheckLists []CheckList `json:"lists"`
+	UserName   string      `bson:"user_name"`
+	CheckLists []CheckList `bson:"lists"`
 }
 
 // сруктура хранения пользователей в рантайме
@@ -30,6 +30,7 @@ type User struct {
 	ID    int64
 	State byte
 	Data  string
+	MsgId int
 }
 
 // структура данных передаваемых в chanel к DB

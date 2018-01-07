@@ -8,9 +8,10 @@ import (
 	tg "gopkg.in/telegram-bot-api.v4"
 )
 
+type Usr map[string]*User
+
 func main() {
 	token := os.Getenv("bot_token")
-
 	bot, err := tg.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -25,9 +26,9 @@ func main() {
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	var Users = make(map[string]User)
+	Users := make(Usr)
 
-	var TData = make(chan TransactData)
+	TData := make(chan TransactData)
 	go DataBase(TData)
 
 	// главный цикл
@@ -35,7 +36,6 @@ func main() {
 		// обработка callback'ов
 		if update.CallbackQuery != nil {
 			UserName := update.CallbackQuery.From.UserName
-			UserID := int64(update.CallbackQuery.From.ID)
 			query := update.CallbackQuery
 
 			var cbData CallbackData
@@ -46,12 +46,9 @@ func main() {
 
 			switch cbData.Command {
 			case CBShowTemp: // call back на показ шаблона
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STShowTemp,
-					Data:  cbData.ListID,
-				}
+				Users[UserName].State = STShowTemp
+				Users[UserName].Data = cbData.ListID
+
 				ShowTemplateList(cbData.ListID, Users[UserName], bot, &TData)
 			case CBAddToList: // call back на добавление шаблона в чек лист
 				TData <- TransactData{
@@ -59,24 +56,17 @@ func main() {
 					UserName: UserName,
 					Command:  TRAddFromTemp,
 				}
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STList,
-				}
+				Users[UserName].State = STList
 				<-TData
-				ShowCheckList(Users[UserName], bot, &TData)
+				Users[UserName].MsgId = ShowCheckList(Users[UserName], bot, &TData, false)
 			case CBCheckList: // call back для показа действий над чек листом
-				Users[UserName] = User{
-					Name:  UserName,
-					Data:  cbData.ListID,
-					ID:    UserID,
-					State: STDeleteFromList,
-				}
+				Users[UserName].State = STDeleteFromList
+				Users[UserName].Data = cbData.ListID
+
 				keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNListDelete))
 				keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNBack))
 				keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
-				msg := tg.NewMessage(Users[UserName].ID, "Вы в главном меню")
+				msg := tg.NewMessage(Users[UserName].ID, "Что сделать с листом?")
 				msg.ReplyMarkup = keyboard
 				bot.Send(msg)
 			case CBCheckItem: // call back для отметки элемента листа
@@ -85,14 +75,11 @@ func main() {
 					UserName: UserName,
 					Command:  TRCheckItem,
 				}
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					Data:  cbData.ListID,
-					State: STList,
-				}
+
+				Users[UserName].State = STList
+				Users[UserName].Data = cbData.ListID
 				<-TData
-				ShowCheckList(Users[UserName], bot, &TData)
+				ShowCheckList(Users[UserName], bot, &TData, true)
 			}
 		}
 
@@ -103,8 +90,8 @@ func main() {
 		UserName := update.Message.From.UserName
 		UserID := int64(update.Message.From.ID)
 
-		if Users[UserName].ID == 0 {
-			Users[UserName] = User{
+		if Users[UserName] == nil {
+			Users[UserName] = &User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STMain,
@@ -135,50 +122,20 @@ func main() {
 		// обработка кнопок
 		switch update.Message.Text {
 		case BTNMain:
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STMain,
-			}
+			Users[UserName].State = STMain
 		case BTNLists:
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STList,
-			}
-			ShowCheckList(Users[UserName], bot, &TData)
+			Users[UserName].State = STList
 		case BTNTemplates:
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STTemplates,
-			}
-			ShowTemplates(Users[UserName], bot, CMDShow, &TData)
+			Users[UserName].State = STTemplates
 		case BTNAddTemplate:
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STAddTmp,
-			}
+			Users[UserName].State = STAddTmp
 		case BTNCancel:
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STTemplates,
-			}
+			Users[UserName].State = STTemplates
 		case BTNBack:
 			if Users[UserName].State == STShowTemp {
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STTemplates,
-				}
+				Users[UserName].State = STTemplates
 			} else if Users[UserName].State == STDeleteFromList {
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STList,
-				}
+				Users[UserName].State = STList
 			}
 		case BTNFinish:
 			if Users[UserName].State == STAddTmpItem {
@@ -187,31 +144,18 @@ func main() {
 					Data:     "",
 					Command:  TRSave,
 				}
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STTemplates,
-				}
+				Users[UserName].State = STTemplates
 			} else if Users[UserName].State == STEditTmpItem {
 				TData <- TransactData{
 					UserName: UserName,
 					Data:     Users[UserName].Data,
 					Command:  TREditTemp,
 				}
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STTemplates,
-				}
+				Users[UserName].State = STTemplates
 			}
 		case BTNEdit:
 			if Users[UserName].State == STShowTemp {
-				Users[UserName] = User{
-					Name:  UserName,
-					ID:    UserID,
-					State: STEditTmp,
-					Data:  Users[UserName].Data,
-				}
+				Users[UserName].State = STEditTmp
 			}
 		case BTNTemplDelete:
 			TData <- TransactData{
@@ -219,33 +163,19 @@ func main() {
 				Data:     Users[UserName].Data,
 				Command:  TRDelTemp,
 			}
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STTemplates,
-			}
+			Users[UserName].State = STTemplates
 			<-TData
-			ShowTemplates(Users[UserName], bot, CMDShow, &TData)
 		case BTNListDelete:
 			TData <- TransactData{
 				UserName: UserName,
 				Data:     Users[UserName].Data,
 				Command:  TRDelList,
 			}
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STList,
-			}
+			Users[UserName].State = STList
 			<-TData
-			ShowCheckList(Users[UserName], bot, &TData)
 		case BTNAddListFromTemplate:
 			ShowTemplates(Users[UserName], bot, CMDAdd, &TData)
-			Users[UserName] = User{
-				Name:  UserName,
-				ID:    UserID,
-				State: STAddFromTemp,
-			}
+			Users[UserName].State = STAddFromTemp
 		}
 
 		// обработка положения в меню
@@ -258,13 +188,13 @@ func main() {
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 		case STList:
-			// ShowCheckList(Users[UserName], bot)
 			keyRow1 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNAddListFromTemplate))
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
 			keyboard := tg.NewReplyKeyboard(keyRow1, keyRow2)
-			msg := tg.NewMessage(Users[UserName].ID, "Что сделать?")
+			msg := tg.NewMessage(Users[UserName].ID, "Вы в меню чек листов")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
+			Users[UserName].MsgId = ShowCheckList(Users[UserName], bot, &TData, false)
 		case STTemplates:
 			keyRow2 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNAddTemplate))
 			keyRow3 := tg.NewKeyboardButtonRow(tg.NewKeyboardButton(BTNMain))
@@ -272,6 +202,7 @@ func main() {
 			msg := tg.NewMessage(Users[UserName].ID, "Вы в меню шаблонов")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
+			ShowTemplates(Users[UserName], bot, CMDShow, &TData)
 		case STAddTmpName:
 			TData <- TransactData{
 				UserName: UserName,
@@ -283,7 +214,7 @@ func main() {
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для формирования листа")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[UserName] = User{
+			Users[UserName] = &User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STAddTmpItem,
@@ -295,7 +226,7 @@ func main() {
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[UserName] = User{
+			Users[UserName] = &User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STAddTmpName,
@@ -317,7 +248,7 @@ func main() {
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название элемента или нажмите кнопку завершить для изменения листа")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[UserName] = User{
+			Users[UserName] = &User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STEditTmpItem,
@@ -330,7 +261,7 @@ func main() {
 			msg := tg.NewMessage(Users[UserName].ID, "Введите название шаблона")
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
-			Users[UserName] = User{
+			Users[UserName] = &User{
 				Name:  UserName,
 				ID:    UserID,
 				State: STEditTmpName,
@@ -346,7 +277,7 @@ func main() {
 	}
 }
 
-func ShowTemplateList(ListID string, user User, bot *tg.BotAPI, TData *chan TransactData) {
+func ShowTemplateList(ListID string, user *User, bot *tg.BotAPI, TData *chan TransactData) {
 	*TData <- TransactData{
 		UserName: user.Name,
 		Command:  TRReturnTemp,
@@ -375,7 +306,7 @@ func ShowTemplateList(ListID string, user User, bot *tg.BotAPI, TData *chan Tran
 	bot.Send(msg)
 }
 
-func ShowCheckList(user User, bot *tg.BotAPI, TData *chan TransactData) {
+func ShowCheckList(user *User, bot *tg.BotAPI, TData *chan TransactData, toEdit bool) int {
 	*TData <- TransactData{
 		UserName: user.Name,
 		Command:  TRReturnList,
@@ -416,12 +347,19 @@ func ShowCheckList(user User, bot *tg.BotAPI, TData *chan TransactData) {
 		}
 	}
 	keyboard := tg.NewInlineKeyboardMarkup(keys...)
-	msg := tg.NewMessage(user.ID, reply)
-	msg.ReplyMarkup = keyboard
-	bot.Send(msg)
+	if toEdit {
+		msg := tg.NewEditMessageReplyMarkup(user.ID, user.MsgId, keyboard)
+		infoMsg, _ := bot.Send(msg)
+		return infoMsg.MessageID
+	} else {
+		msg := tg.NewMessage(user.ID, reply)
+		msg.ReplyMarkup = keyboard
+		infoMsg, _ := bot.Send(msg)
+		return infoMsg.MessageID
+	}
 }
 
-func ShowTemplates(user User, bot *tg.BotAPI, command byte, TData *chan TransactData) {
+func ShowTemplates(user *User, bot *tg.BotAPI, command byte, TData *chan TransactData) {
 	*TData <- TransactData{
 		UserName: user.Name,
 		Command:  TRReturnTemp,
