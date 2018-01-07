@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // Структура элемента листа
 type Item struct {
 	Name  string `json:"name"`
@@ -11,6 +13,8 @@ type Item struct {
 type CheckList struct {
 	Name  string `json:"name"`
 	ID    string `json:"id"`
+	TimeStart time.Time `bson:"time_start"`
+	FlagStart bool `bson:"flag_start"`
 	Items []Item `json:"items"`
 }
 

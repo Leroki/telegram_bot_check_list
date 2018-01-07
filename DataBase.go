@@ -199,14 +199,10 @@ func DataBase(TData chan TransactData) {
 				log.Fatal(err)
 			}
 
-			count := 0
 			for i := range temp.CheckLists {
 				for j := range temp.CheckLists[i].Items {
-					if temp.CheckLists[i].Items[j].State == true {
-						count++
-					}
 					if locData.Data == temp.CheckLists[i].Items[j].ID {
-						temp.CheckLists[i].Items[j].State = true
+						temp.CheckLists[i].Items[j].State = !temp.CheckLists[i].Items[j].State
 					}
 				}
 			}
