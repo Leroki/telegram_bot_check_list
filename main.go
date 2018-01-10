@@ -31,6 +31,8 @@ func main() {
 	TData := make(chan TransactData)
 	go DataBase(TData)
 
+
+
 	// главный цикл
 	for update := range updates {
 		// обработка callback'ов
