@@ -2,7 +2,7 @@ package main
 
 // состояние пользователя во время исольнения кода
 const (
-	STMain           byte = iota
+	STMain byte = iota
 	STList
 	STShowTemp
 	STTemplates
@@ -18,7 +18,7 @@ const (
 
 // команда из call back'а
 const (
-	CBShowTemp  byte = iota
+	CBShowTemp byte = iota
 	CBAddToList
 	CBCheckList
 	CBCheckItem
