@@ -215,7 +215,7 @@ func DataBase(TData chan TransactData) {
 			}
 			TData <- TransactData{}
 
-		case TRReturnTemp:
+		case TRReturnTemp: // возвращение шаблонов пользователя
 			var temp CheckListJson
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
@@ -226,7 +226,7 @@ func DataBase(TData chan TransactData) {
 				DataCL:   temp,
 			}
 
-		case TRReturnList:
+		case TRReturnList: // возвращение чек листов пользователя
 			var temp CheckListJson
 			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
