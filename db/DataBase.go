@@ -1,76 +1,126 @@
-package main
+package db
 
 import (
 	"log"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/rs/xid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-func DataBase(TData chan TransactData) {
+// Структура элемента листа
+type Item struct {
+	Name  string `bson:"name"`
+	ID    string `bson:"id"`
+	State bool   `bson:"state"`
+}
+
+// структура листа
+type CheckList struct {
+	Name      string    `bson:"name"`
+	ID        string    `bson:"id"`
+	TimeStart time.Time `bson:"time_start"`
+	FlagStart bool      `bson:"flag_start"`
+	Items     []Item    `bson:"items"`
+}
+
+// структура хранения листов
+type CheckListJson struct {
+	UserName   string      `bson:"user_name"`
+	CheckLists []CheckList `bson:"lists"`
+}
+
+type DataBase struct {
+	session             *mgo.Session
+	checkListsTemplates *mgo.Collection
+	checkLists          *mgo.Collection
+	mu                  *sync.Mutex
+}
+
+func Init() *DataBase {
 	mongoUri := os.Getenv("MONGODB_URI")
 	session, err := mgo.Dial(mongoUri)
 	if err != nil {
 		panic(err)
 	}
-	defer session.Close()
 
-	session.SetMode(mgo.Monotonic, true)
+	cltmp := session.DB("heroku_lqwvt43d").C("CheckListTemplate")
+	cl := session.DB("heroku_lqwvt43d").C("CheckList")
+	mu := &sync.Mutex{}
 
-	checkListTempDB := session.DB("heroku_lqwvt43d").C("CheckListTemplate")
-	checkListDB := session.DB("heroku_lqwvt43d").C("CheckList")
+	return &DataBase{
+		session:             session,
+		checkLists:          cl,
+		checkListsTemplates: cltmp,
+		mu:                  mu,
+	}
+}
 
+func (db *DataBase) CreateUser(userName string) {
+	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	if err.Error() == "not found" {
+		err = db.checkListsTemplates.Insert(&CheckListJson{
+			UserName:   userName,
+			CheckLists: nil,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+
+	// user list
+	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	if err.Error() == "not found" {
+		err = db.checkLists.Insert(&CheckListJson{
+			UserName:   userName,
+			CheckLists: nil,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+}
+
+func (db *DataBase) DeleteUser(userName string) {
+	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	if err == nil {
+		err = db.checkListsTemplates.Update(bson.M{"user_name": userName}, &CheckListJson{
+			UserName:   userName,
+			CheckLists: nil,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+
+	// user list
+	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	if err == nil {
+		err = db.checkLists.Update(bson.M{"user_name": userName}, &CheckListJson{
+			UserName:   userName,
+			CheckLists: nil,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+}
+
+func DataBaseasdf() {
 	var CL = make(map[string]CheckList)
 	for {
-		locData := <-TData
 		switch locData.Command {
-		case TRInitUser: // Создание пользователя в БД
-			// user check lists
-			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&CheckListJson{})
-			if err == nil {
-				err = checkListTempDB.Update(bson.M{"user_name": locData.UserName}, &CheckListJson{
-					UserName:   locData.UserName,
-					CheckLists: nil,
-				})
-				if err != nil {
-					log.Fatal(err)
-				}
-			} else if err.Error() == "not found" {
-				err = checkListTempDB.Insert(&CheckListJson{
-					UserName:   locData.UserName,
-					CheckLists: nil,
-				})
-				if err != nil {
-					log.Fatal(err)
-				}
-			} else {
-				log.Fatal(err)
-			}
-
-			// user list
-			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&CheckListJson{})
-			if err == nil {
-				err = checkListDB.Update(bson.M{"user_name": locData.UserName}, &CheckListJson{
-					UserName:   locData.UserName,
-					CheckLists: nil,
-				})
-				if err != nil {
-					log.Fatal(err)
-				}
-			} else if err.Error() == "not found" {
-				err = checkListDB.Insert(&CheckListJson{
-					UserName:   locData.UserName,
-					CheckLists: nil,
-				})
-				if err != nil {
-					log.Fatal(err)
-				}
-			} else {
-				log.Fatal(err)
-			}
-
 		case TRAddName: // Добавление названия чек листа
 			CL[locData.UserName] = CheckList{
 				Name: locData.Data,
