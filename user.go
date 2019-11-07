@@ -6,7 +6,7 @@ type User struct {
 	ID    int64
 	State byte
 	Data  string
-	MsgId int
+	MessageId int
 }
 
 func (u *User) Init() {
