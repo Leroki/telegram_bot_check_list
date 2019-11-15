@@ -1,0 +1,12 @@
+# github.com/rs/xid v0.0.0-20170604230408-02dd45c33376
+github.com/rs/xid
+# github.com/technoweenie/multipartstreamer v1.0.1
+github.com/technoweenie/multipartstreamer
+# gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528
+gopkg.in/mgo.v2
+gopkg.in/mgo.v2/bson
+gopkg.in/mgo.v2/internal/json
+gopkg.in/mgo.v2/internal/sasl
+gopkg.in/mgo.v2/internal/scram
+# gopkg.in/telegram-bot-api.v4 v4.5.2-0.20161125055035-0a57807db79e
+gopkg.in/telegram-bot-api.v4

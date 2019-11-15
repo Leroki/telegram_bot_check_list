@@ -106,7 +106,7 @@ func main() {
 		// комманда - сообщение, начинающееся с "/"
 		switch update.Message.Command() {
 		case CMDStart:
-			msg := tg.NewMessage(UserID, "Привет "+update.Message.From.FirstName+"! Я телеграм бот.")
+			msg := tg.NewMessage(UserID, "Привет "+update.Message.From.FirstName+" Я телеграм бот.")
 			bot.Send(msg)
 			TData <- TransactData{
 				UserName: UserName,
