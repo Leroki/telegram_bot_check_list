@@ -1,48 +1,48 @@
-package main
+package telegrambot
 
 import "time"
 
 // Структура элемента листа
-type Item struct {
+type item struct {
 	Name  string `bson:"name"`
 	ID    string `bson:"id"`
 	State bool   `bson:"state"`
 }
 
 // структура листа
-type CheckList struct {
+type checkList struct {
 	Name      string    `bson:"name"`
 	ID        string    `bson:"id"`
 	TimeStart time.Time `bson:"time_start"`
 	FlagStart bool      `bson:"flag_start"`
-	Items     []Item    `bson:"items"`
+	Items     []item    `bson:"items"`
 }
 
 // структура хранения листов
-type CheckListJson struct {
+type checkListJSON struct {
 	UserName   string      `bson:"user_name"`
-	CheckLists []CheckList `bson:"lists"`
+	CheckLists []checkList `bson:"lists"`
 }
 
 // сруктура хранения пользователей в рантайме
-type User struct {
+type user struct {
 	Name  string
 	ID    int64
 	State byte
 	Data  string
-	MsgId int
+	MsgID int
 }
 
 // структура данных передаваемых в chanel к DB
-type TransactData struct {
+type transactData struct {
 	UserName string
 	Data     string
 	Command  byte
-	DataCL   CheckListJson
+	DataCL   checkListJSON
 }
 
 // структура данный передаваемых черз call back
-type CallbackData struct {
+type callbackData struct {
 	ListID  string `json:"list_id"`
 	Command byte   `json:"command"`
 }
