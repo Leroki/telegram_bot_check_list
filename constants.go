@@ -1,6 +1,6 @@
 package main
 
-// состояние пользователя во время исольнения кода
+// STMain состояние пользователя во время исольнения кода
 const STMain byte = 0
 const STList byte = 1
 const STShowTemp byte = 2

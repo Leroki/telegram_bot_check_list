@@ -8,7 +8,7 @@ import (
 	tg "gopkg.in/telegram-bot-api.v4"
 )
 
-type Usr map[string]*User
+type userMap map[string]*User
 
 func main() {
 	token := os.Getenv("bot_token")
@@ -26,7 +26,7 @@ func main() {
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	Users := make(Usr)
+	Users := make(userMap)
 
 	TData := make(chan TransactData)
 	go DataBase(TData)
