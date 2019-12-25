@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"log"
 	"os"
 	"sync"
@@ -12,14 +13,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Структура элемента листа
+// Item Структура элемента листа
 type Item struct {
 	Name  string `bson:"name"`
 	ID    string `bson:"id"`
 	State bool   `bson:"state"`
 }
 
-// структура листа
+// CheckList структура листа
 type CheckList struct {
 	Name      string    `bson:"name"`
 	ID        string    `bson:"id"`
@@ -28,22 +29,24 @@ type CheckList struct {
 	Items     []Item    `bson:"items"`
 }
 
-// структура хранения листов
-type CheckListJson struct {
+// CheckListJSON структура хранения листов
+type CheckListJSON struct {
 	UserName   string      `bson:"user_name"`
 	CheckLists []CheckList `bson:"lists"`
 }
 
+// DataBase aa
 type DataBase struct {
-	session             *mongo.Client
-	checkListsTemplates *mongo.Database
-	checkLists          *mongo.Database
+	client              *mongo.Client
+	checkListsTemplates *mongo.Collection
+	checkLists          *mongo.Collection
 	mu                  *sync.Mutex
 }
 
+// Init hz
 func Init() *DataBase {
-	mongoUri := os.Getenv("MONGODB_URI")
-	clientOptions := options.Client().ApplyURI(mongoUri)
+	mongoURI := os.Getenv("MONGODB_URI")
+	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 
 	if err != nil {
@@ -63,9 +66,9 @@ func Init() *DataBase {
 }
 
 func (db *DataBase) CreateUser(userName string) {
-	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJSON{})
 	if err.Error() == "not found" {
-		err = db.checkListsTemplates.Insert(&CheckListJson{
+		err = db.checkListsTemplates.Insert(&CheckListJSON{
 			UserName:   userName,
 			CheckLists: nil,
 		})
@@ -77,9 +80,9 @@ func (db *DataBase) CreateUser(userName string) {
 	}
 
 	// user list
-	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJSON{})
 	if err.Error() == "not found" {
-		err = db.checkLists.Insert(&CheckListJson{
+		err = db.checkLists.Insert(&CheckListJSON{
 			UserName:   userName,
 			CheckLists: nil,
 		})
@@ -92,9 +95,9 @@ func (db *DataBase) CreateUser(userName string) {
 }
 
 func (db *DataBase) DeleteUser(userName string) {
-	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	err := db.checkListsTemplates.Find(bson.M{"user_name": userName}).One(&CheckListJSON{})
 	if err == nil {
-		err = db.checkListsTemplates.Update(bson.M{"user_name": userName}, &CheckListJson{
+		err = db.checkListsTemplates.Update(bson.M{"user_name": userName}, &CheckListJSON{
 			UserName:   userName,
 			CheckLists: nil,
 		})
@@ -106,9 +109,9 @@ func (db *DataBase) DeleteUser(userName string) {
 	}
 
 	// user list
-	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJson{})
+	err = db.checkLists.Find(bson.M{"user_name": userName}).One(&CheckListJSON{})
 	if err == nil {
-		err = db.checkLists.Update(bson.M{"user_name": userName}, &CheckListJson{
+		err = db.checkLists.Update(bson.M{"user_name": userName}, &CheckListJSON{
 			UserName:   userName,
 			CheckLists: nil,
 		})
@@ -120,11 +123,11 @@ func (db *DataBase) DeleteUser(userName string) {
 	}
 }
 
-func DataBaseasdf() {
+func DataBaseasdf(CheckListJson) {
 	var CL = make(map[string]CheckList)
 	for {
 		switch locData.Command {
-		case TRAddName: // Добавление названия чек листа
+		case TRAddName: // Добав CheckListJsonление названия чек листа
 			CL[locData.UserName] = CheckList{
 				Name: locData.Data,
 				ID:   xid.New().String(),
@@ -150,7 +153,7 @@ func DataBaseasdf() {
 					Name:  locData.Data,
 					ID:    xid.New().String(),
 					State: false,
-				})
+					CheckListJson})
 				CL[locData.UserName] = CheckList{
 					Name:  CL[locData.UserName].Name,
 					ID:    CL[locData.UserName].ID,
@@ -159,7 +162,7 @@ func DataBaseasdf() {
 			}
 
 		case TREditTemp: // Изменение шаблона
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -178,7 +181,7 @@ func DataBaseasdf() {
 			delete(CL, locData.UserName)
 
 		case TRSave: // Запись изменений или новых данных в БД
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -192,7 +195,7 @@ func DataBaseasdf() {
 			delete(CL, locData.UserName)
 
 		case TRDelTemp: // Удаление шаблона
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -207,16 +210,17 @@ func DataBaseasdf() {
 			TData <- TransactData{}
 
 		case TRAddFromTemp: // Добавление Листа из шаблона
-			var cl1 CheckListJson
+			var cl1 CheckListJSON
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&cl1)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			var cl2 CheckListJson
+			var cl2 CheckListJSON
 			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&cl2)
 			if err != nil {
 				log.Fatal(err)
+				CheckListJson
 			}
 
 			var cl3 CheckList
@@ -234,7 +238,7 @@ func DataBaseasdf() {
 			TData <- TransactData{}
 
 		case TRDelList: // Удаление листа
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -248,7 +252,7 @@ func DataBaseasdf() {
 			TData <- TransactData{}
 
 		case TRCheckItem: // Отметка пункта листа
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -269,7 +273,7 @@ func DataBaseasdf() {
 			TData <- TransactData{}
 
 		case TRReturnTemp: // возвращение шаблонов пользователя
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListTempDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -280,7 +284,7 @@ func DataBaseasdf() {
 			}
 
 		case TRReturnList: // возвращение чек листов пользователя
-			var temp CheckListJson
+			var temp CheckListJSON
 			err = checkListDB.Find(bson.M{"user_name": locData.UserName}).One(&temp)
 			if err != nil {
 				log.Fatal(err)
@@ -294,6 +298,7 @@ func DataBaseasdf() {
 	}
 }
 
+// RemoveCheckList remove check list from runtime
 func RemoveCheckList(u []CheckList, listID string) []CheckList {
 	var id int
 	id = -1

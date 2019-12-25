@@ -14,7 +14,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	// bot.Debug = true
+	bot.Debug = true
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -23,10 +23,11 @@ func main() {
 
 	updates, err := bot.GetUpdatesChan(u)
 
-	Users := map[string]*User{}
+	// users := map[string]*User{}
 
 	// главный цикл
 	for update := range updates {
-
+		messageID := update.Message.MessageID
+		log.Printf("message %d", messageID)
 	}
 }
