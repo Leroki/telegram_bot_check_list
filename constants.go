@@ -1,4 +1,4 @@
-package telegrambot
+package main
 
 // состояние пользователя во время исольнения кода
 const stMain byte = 0
