@@ -1,1 +1,1 @@
-worker: telegram_bot_check_list
+worker: ~/bin/telegram_bot_check_list
