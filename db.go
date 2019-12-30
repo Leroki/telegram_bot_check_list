@@ -19,8 +19,8 @@ func dataBase(TData chan transactData) {
 
 	session.SetMode(mgo.Monotonic, true)
 
-	checkListTempDB := session.DB("heroku_lqwvt43d").C("checkListTemplate")
-	checkListDB := session.DB("heroku_lqwvt43d").C("checkList")
+	checkListTempDB := session.DB("heroku_lqwvt43d").C("CheckListTemplate")
+	checkListDB := session.DB("heroku_lqwvt43d").C("CheckList")
 
 	var CL = make(map[string]checkList)
 	for {
