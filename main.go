@@ -1,9 +1,14 @@
 package main
 
-import "github.com/Leroki/telegram_bot_check_list/db"
+import (
+	"context"
+
+	"github.com/Leroki/telegram_bot_check_list/db"
+)
 
 func main() {
-	dataBase := db.Init()
+	ctx := context.Background()
+	dataBase := db.Init(&ctx)
 	userName := "Nikita"
 	dataBase.CreateUser(&userName)
 	dataBase.DeleteUser(&userName)

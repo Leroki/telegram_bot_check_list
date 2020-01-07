@@ -17,10 +17,11 @@ type DataBase struct {
 	client     *mongo.Client
 	checkLists *mongo.Collection
 	dbMutex    *sync.Mutex
+	ctx        *context.Context
 }
 
 // Init create connecting to database
-func Init() *DataBase {
+func Init(ctx *context.Context) *DataBase {
 	mongoURI := os.Getenv("MONGODB_URI")
 	if mongoURI == "" {
 		log.Fatal("no find os env value MONGODB_URI")
@@ -40,52 +41,50 @@ func Init() *DataBase {
 		client:     client,
 		checkLists: checkListCollection,
 		dbMutex:    mu,
+		ctx:        ctx,
 	}
 }
 
 // CreateUser create document in database
 func (db *DataBase) CreateUser(userName *string) {
-	user := Item{
+	user := User{
 		UserName:      *userName,
 		RootMessageID: 1,
 		CheckLists:    nil,
 	}
 	userIsCreated := db.checkUserInDataBase(userName)
 	if !userIsCreated {
-		insertOneResult, err := db.checkLists.InsertOne(context.TODO(), user)
+		ctx := *db.ctx
+		insertOneResult, err := db.checkLists.InsertOne(ctx, user)
 		log.Printf(": fn -> db.CreateUser : %v :: %v", insertOneResult, err)
 	}
 }
 
 func (db *DataBase) checkUserInDataBase(userName *string) bool {
-
 	filter := bson.D{{Key: "UserName", Value: *userName}}
-	ret := new(Item)
-	err := db.checkLists.FindOne(context.TODO(), filter).Decode(ret)
+	ret := new(User)
+	ctx := *db.ctx
+	err := db.checkLists.FindOne(ctx, filter).Decode(ret)
 	if err != nil && err.Error() == "mongo: no documents in result" {
 		return false
 	} else if err == nil {
 		return true
+	} else {
+		panic(err)
 	}
-	return false
 }
 
 // DeleteUser delete basic document in collection
 func (db *DataBase) DeleteUser(userName *string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
-	delRes, err := db.checkLists.DeleteOne(context.TODO(), filter)
+	ctx := *db.ctx
+	delRes, err := db.checkLists.DeleteOne(ctx, filter)
 	log.Printf(": fn -> db.DeleteUser : %v :: %v", delRes, err)
 }
-// // RemoveCheckList remove check list from runtime
-// func RemoveCheckList(u []CheckList, listID string) []CheckList {
-// 	var id int
-// 	id = -1
-// 	for i := range u {
-// 		if u[i].ID == listID {
-// 			id = i
-// 			break
-// 		}
-// 	}
 
-// 	return append(u[:id], u[id+1:]...)
-// }
+// UpdateUser update base document
+func (db *DataBase) UpdateUser(userName *string) {
+	filter := bson.D{{Key: "UserName", Value: userName}}
+	ctx := *db.ctx
+	db.checkLists.UpdateOne(ctx, filter, bson.D{{}})
+}

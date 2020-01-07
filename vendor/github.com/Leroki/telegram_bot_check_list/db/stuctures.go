@@ -1,7 +1,7 @@
 package db
 
-// Item base struct db storage
-type Item struct {
+// User base struct db storage
+type User struct {
 	UserName      string      `bson:"UserName"`
 	RootMessageID int         `bson:"RootMessageID"`
 	CheckLists    []CheckList `bson:"CheckLists"`
