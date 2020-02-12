@@ -10,6 +10,6 @@ func main() {
 	ctx := context.Background()
 	dataBase := db.Init(&ctx)
 	userName := "Nikita"
-	dataBase.CreateUser(&userName)
-	dataBase.DeleteUser(&userName)
+	dataBase.CreateUser(userName)
+	dataBase.DeleteUser(userName)
 }

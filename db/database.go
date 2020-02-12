@@ -46,9 +46,9 @@ func Init(ctx *context.Context) *DataBase {
 }
 
 // CreateUser create document in database
-func (db *DataBase) CreateUser(userName *string) {
+func (db *DataBase) CreateUser(userName string) {
 	user := User{
-		UserName:      *userName,
+		UserName:      userName,
 		RootMessageID: 1,
 		CheckLists:    nil,
 	}
@@ -60,8 +60,8 @@ func (db *DataBase) CreateUser(userName *string) {
 	}
 }
 
-func (db *DataBase) checkUserInDataBase(userName *string) bool {
-	filter := bson.D{{Key: "UserName", Value: *userName}}
+func (db *DataBase) checkUserInDataBase(userName string) bool {
+	filter := bson.D{{Key: "UserName", Value: userName}}
 	ret := new(User)
 	ctx := *db.ctx
 	err := db.checkLists.FindOne(ctx, filter).Decode(ret)
@@ -75,7 +75,7 @@ func (db *DataBase) checkUserInDataBase(userName *string) bool {
 }
 
 // DeleteUser delete basic document in collection
-func (db *DataBase) DeleteUser(userName *string) {
+func (db *DataBase) DeleteUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ctx := *db.ctx
 	delRes, err := db.checkLists.DeleteOne(ctx, filter)
@@ -83,7 +83,7 @@ func (db *DataBase) DeleteUser(userName *string) {
 }
 
 // UpdateUser update base document
-func (db *DataBase) UpdateUser(userName *string) {
+func (db *DataBase) UpdateUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ctx := *db.ctx
 	db.checkLists.UpdateOne(ctx, filter, bson.D{{}})
