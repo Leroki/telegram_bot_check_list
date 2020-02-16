@@ -6,13 +6,12 @@ import (
 	"os"
 	"sync"
 
-	// "github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// DataBase aa
+// DataBase
 type DataBase struct {
 	client     *mongo.Client
 	checkLists *mongo.Collection
@@ -45,7 +44,7 @@ func Init(ctx *context.Context) *DataBase {
 	}
 }
 
-// CreateUser create document in database
+// CreateUser create user in database
 func (db *DataBase) CreateUser(userName string) {
 	user := User{
 		UserName:      userName,
@@ -74,7 +73,7 @@ func (db *DataBase) checkUserInDataBase(userName string) bool {
 	}
 }
 
-// DeleteUser delete basic document in collection
+// DeleteUser delete user document in collection
 func (db *DataBase) DeleteUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ctx := *db.ctx
@@ -82,7 +81,7 @@ func (db *DataBase) DeleteUser(userName string) {
 	log.Printf(": fn -> db.DeleteUser : %v :: %v", delRes, err)
 }
 
-// UpdateUser update base document
+// UpdateUser update user document
 func (db *DataBase) UpdateUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ctx := *db.ctx
