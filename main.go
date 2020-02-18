@@ -43,5 +43,12 @@ func main() {
 		if err != nil {
 			log.Printf("error: %v\n", err)
 		}
+		_, err = bot.DeleteMessage(tg.DeleteMessageConfig{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: update.Message.MessageID,
+		})
+		if err != nil {
+			log.Printf("error: %v\n", err)
+		}
 	}
 }
