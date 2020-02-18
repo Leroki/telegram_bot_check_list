@@ -85,5 +85,6 @@ func (db *DataBase) DeleteUser(userName string) {
 func (db *DataBase) UpdateUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ctx := *db.ctx
-	db.checkLists.UpdateOne(ctx, filter, bson.D{{}})
+	updRes, err := db.checkLists.UpdateOne(ctx, filter, bson.D{{}})
+	log.Printf(": fn -> db.DeleteUser : %v :: %v", updRes, err)
 }

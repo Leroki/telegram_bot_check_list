@@ -29,5 +29,19 @@ func main() {
 	// главный цикл
 	for update := range updates {
 		log.Printf("%v\n", update)
+
+		msg := tg.NewMessage(update.Message.Chat.ID, "Что сделать с листом?")
+		message, err := bot.Send(msg)
+		if err != nil {
+			log.Printf("error: %v\n", err)
+		}
+
+		_, err = bot.DeleteMessage(tg.DeleteMessageConfig{
+			ChatID:    message.Chat.ID,
+			MessageID: message.MessageID,
+		})
+		if err != nil {
+			log.Printf("error: %v\n", err)
+		}
 	}
 }
