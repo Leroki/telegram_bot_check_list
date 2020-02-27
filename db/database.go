@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// DataBase
+// DataBase struct
 type DataBase struct {
 	client     *mongo.Client
 	checkLists *mongo.Collection
