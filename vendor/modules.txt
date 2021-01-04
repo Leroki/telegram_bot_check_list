@@ -1,5 +1,7 @@
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
+# github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
+github.com/go-telegram-bot-api/telegram-bot-api
 # github.com/golang/snappy v0.0.1
 github.com/golang/snappy
 # github.com/google/uuid v1.1.1
@@ -18,7 +20,7 @@ github.com/technoweenie/multipartstreamer
 github.com/xdg/scram
 # github.com/xdg/stringprep v0.0.0-20180714160509-73f8eece6fdc
 github.com/xdg/stringprep
-# go.mongodb.org/mongo-driver v1.3.0
+# go.mongodb.org/mongo-driver v1.3.3
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
 go.mongodb.org/mongo-driver/bson/bsonoptions
@@ -57,5 +59,3 @@ golang.org/x/sync/semaphore
 # golang.org/x/text v0.3.2
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
-# gopkg.in/telegram-bot-api.v4 v4.6.4
-gopkg.in/telegram-bot-api.v4

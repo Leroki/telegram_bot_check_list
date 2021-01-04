@@ -1,0 +1,13 @@
+run:
+  tests: false
+linters:
+  enable-all: true
+linters-settings:
+  lll:
+    line-length: 140
+  goimports:
+    local-prefixes: github.com/Leroki/telegram_bot_check_list
+  gocritic:
+    enabled-tags:
+      - style
+      - experimental

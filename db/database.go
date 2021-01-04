@@ -11,24 +11,25 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// DataBase struct
+// DataBase struct.
 type DataBase struct {
 	client     *mongo.Client
 	checkLists *mongo.Collection
 	dbMutex    *sync.Mutex
-	ctx        *context.Context
+	ctx        context.Context
 }
 
-// Init create connecting to database
-func Init(ctx *context.Context) *DataBase {
+// Init create connecting to database.
+func Init(ctx context.Context) *DataBase {
 	mongoURI := os.Getenv("MONGODB_URI")
 	if mongoURI == "" {
 		log.Fatal("no find os env value MONGODB_URI")
 	}
+
 	clientOptions := options.Client().ApplyURI(mongoURI)
 	clientOptions.SetRetryWrites(false)
-	client, err := mongo.Connect(context.TODO(), clientOptions)
 
+	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,16 +45,17 @@ func Init(ctx *context.Context) *DataBase {
 	}
 }
 
-// CreateUser create user in database
+// CreateUser create user in database.
 func (db *DataBase) CreateUser(userName string) {
 	user := User{
 		UserName:      userName,
 		RootMessageID: 1,
 		CheckLists:    nil,
 	}
+
 	userIsCreated := db.checkUserInDataBase(userName)
 	if !userIsCreated {
-		ctx := *db.ctx
+		ctx := db.ctx
 		insertOneResult, err := db.checkLists.InsertOne(ctx, user)
 		log.Printf(": fn -> db.CreateUser : %v :: %v", insertOneResult, err)
 	}
@@ -62,29 +64,34 @@ func (db *DataBase) CreateUser(userName string) {
 func (db *DataBase) checkUserInDataBase(userName string) bool {
 	filter := bson.D{{Key: "UserName", Value: userName}}
 	ret := new(User)
-	ctx := *db.ctx
+	ctx := db.ctx
+
 	err := db.checkLists.FindOne(ctx, filter).Decode(ret)
-	if err != nil && err.Error() == "mongo: no documents in result" {
+
+	switch {
+	case err.Error() == "mongo: no documents in result":
 		return false
-	} else if err == nil {
+	case err.Error() != "mongo: no documents in result":
+		log.Printf("[ERR]: fn -> db.checkUserInDataBase : %s", err.Error())
+
+		return false
+	default:
 		return true
-	} else {
-		panic(err)
 	}
 }
 
-// DeleteUser delete user document in collection
+// DeleteUser delete user document in collection.
 func (db *DataBase) DeleteUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
-	ctx := *db.ctx
+	ctx := db.ctx
 	delRes, err := db.checkLists.DeleteOne(ctx, filter)
 	log.Printf(": fn -> db.DeleteUser : %v :: %v", delRes, err)
 }
 
-// UpdateUser update user document
+// UpdateUser update user document.
 func (db *DataBase) UpdateUser(userName string) {
 	filter := bson.D{{Key: "UserName", Value: userName}}
-	ctx := *db.ctx
+	ctx := db.ctx
 	updRes, err := db.checkLists.UpdateOne(ctx, filter, bson.D{{}})
 	log.Printf(": fn -> db.DeleteUser : %v :: %v", updRes, err)
 }

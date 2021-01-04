@@ -4,11 +4,12 @@ import (
 	"log"
 	"os"
 
-	tg "gopkg.in/telegram-bot-api.v4"
+	tg "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func main() {
 	token := os.Getenv("bot_token")
+
 	bot, err := tg.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -31,6 +32,7 @@ func main() {
 		log.Printf("%v\n", update)
 
 		msg := tg.NewMessage(update.Message.Chat.ID, "Что сделать с листом?")
+
 		message, err := bot.Send(msg)
 		if err != nil {
 			log.Printf("error: %v\n", err)
@@ -40,13 +42,16 @@ func main() {
 			ChatID:    message.Chat.ID,
 			MessageID: message.MessageID,
 		})
+
 		if err != nil {
 			log.Printf("error: %v\n", err)
 		}
+
 		_, err = bot.DeleteMessage(tg.DeleteMessageConfig{
 			ChatID:    update.Message.Chat.ID,
 			MessageID: update.Message.MessageID,
 		})
+
 		if err != nil {
 			log.Printf("error: %v\n", err)
 		}
